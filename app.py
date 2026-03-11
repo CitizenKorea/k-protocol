@@ -20,37 +20,58 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. PDF 생성 엔진 (오류 완벽 수리)
+# 2. PDF 생성 엔진 (한글 폰트 에러 완벽 해결 - 영문 매핑)
 def create_pdf(summary_df, data_type, unit):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("helvetica", 'B', 16)
-    pdf.cell(190, 10, f"K-PROTOCOL {data_type} NANO-REPORT", 0, 1, 'C')
+    # 한글 에러 방지를 위해 data_type을 무조건 안전한 영문으로 치환
+    safe_data_type = data_type.split('(')[0].strip() if '(' in data_type else data_type
+    pdf.cell(190, 10, f"K-PROTOCOL {safe_data_type} NANO-REPORT", 0, 1, 'C')
+    
     pdf.set_font("helvetica", '', 11)
     pdf.ln(10)
     pdf.cell(190, 8, f"Base Geometric Standard (S_earth): {S_EARTH:.9f}", 0, 1, 'L')
     pdf.ln(5)
     
-    pdf.set_fill_color(220, 230, 241)
-    pdf.cell(30, 10, "Target ID", 1, 0, 'C', True)
-    pdf.cell(40, 10, f"SI Standard ({unit})", 1, 0, 'C', True)
-    pdf.cell(40, 10, f"K-Protocol ({unit})", 1, 0, 'C', True)
-    pdf.cell(35, 10, "Sync (%)", 1, 0, 'C', True)
-    pdf.cell(45, 10, f"Rem. Var ({unit})", 1, 1, 'C', True)
+    # 3D 고도 데이터가 있는지 확인
+    has_altitude = '고도(m)' in summary_df.columns
     
-    pdf.set_font("helvetica", '', 9)
-    for _, row in summary_df.head(40).iterrows():
-        pdf.cell(30, 10, str(row['ID'])[:15], 1, 0, 'C')
-        si_val = f"{row['SI 기준']:,.4f}" if "m" in unit else f"{row['SI 기준']:.6f}"
-        k_val = f"{row['K-Protocol']:,.4f}" if "m" in unit else f"{row['K-Protocol']:.6f}"
-        rem_val = f"{row['남는변수']:,.6f}" if "m" in unit else f"{row['남는변수']:.9f}"
-        
-        pdf.cell(40, 10, si_val, 1, 0, 'C')
-        pdf.cell(40, 10, k_val, 1, 0, 'C')
-        pdf.cell(35, 10, f"{row['보정율 (%)']:.4f}", 1, 0, 'C')
-        pdf.cell(45, 10, rem_val, 1, 1, 'C')
-        
-    # PDF 바이너리 에러 방지용 호환성 코드
+    pdf.set_fill_color(220, 230, 241)
+    if has_altitude:
+        pdf.set_font("helvetica", 'B', 9)
+        pdf.cell(20, 10, "ID", 1, 0, 'C', True)
+        pdf.cell(30, 10, f"Altitude(m)", 1, 0, 'C', True)
+        pdf.cell(35, 10, f"SI Std({unit})", 1, 0, 'C', True)
+        pdf.cell(35, 10, f"K-Proto({unit})", 1, 0, 'C', True)
+        pdf.cell(35, 10, f"Rem. Var({unit})", 1, 0, 'C', True)
+        pdf.cell(35, 10, "Local S_loc", 1, 1, 'C', True)
+    else:
+        pdf.cell(30, 10, "Target ID", 1, 0, 'C', True)
+        pdf.cell(40, 10, f"SI Standard ({unit})", 1, 0, 'C', True)
+        pdf.cell(40, 10, f"K-Protocol ({unit})", 1, 0, 'C', True)
+        pdf.cell(35, 10, "Sync (%)", 1, 0, 'C', True)
+        pdf.cell(45, 10, f"Rem. Var ({unit})", 1, 1, 'C', True)
+    
+    pdf.set_font("helvetica", '', 8)
+    for _, row in summary_df.head(45).iterrows():
+        if has_altitude:
+            pdf.cell(20, 10, str(row['ID'])[:15], 1, 0, 'C')
+            pdf.cell(30, 10, f"{row['고도(m)']:,.1f}", 1, 0, 'C')
+            pdf.cell(35, 10, f"{row['SI 기준']:,.2f}", 1, 0, 'C')
+            pdf.cell(35, 10, f"{row['K-Protocol']:,.2f}", 1, 0, 'C')
+            pdf.cell(35, 10, f"{row['남는변수']:,.2f}", 1, 0, 'C')
+            pdf.cell(35, 10, f"{row['S_loc']:.6f}", 1, 1, 'C')
+        else:
+            pdf.cell(30, 10, str(row['ID'])[:15], 1, 0, 'C')
+            si_val = f"{row['SI 기준']:,.4f}" if "m" in unit else f"{row['SI 기준']:.6f}"
+            k_val = f"{row['K-Protocol']:,.4f}" if "m" in unit else f"{row['K-Protocol']:.6f}"
+            rem_val = f"{row['남는변수']:,.6f}" if "m" in unit else f"{row['남는변수']:.9f}"
+            pdf.cell(40, 10, si_val, 1, 0, 'C')
+            pdf.cell(40, 10, k_val, 1, 0, 'C')
+            pdf.cell(35, 10, f"{row['보정율 (%)']:.4f}", 1, 0, 'C')
+            pdf.cell(45, 10, rem_val, 1, 1, 'C')
+            
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
@@ -77,7 +98,7 @@ if uploaded_file:
             
             # --- A. 지상 좌표 데이터 (SINEX 3D 고도 추적 엔진) ---
             if ".snx" in fname:
-                data_type_name = "3D GEODETIC (고도/중력 추적)"
+                data_type_name = "3D_GEODETIC" # 한글 제거 (PDF 에러 방지)
                 unit_str = "m"
                 snx_coords = {}
                 
@@ -103,13 +124,9 @@ if uploaded_file:
                 rows = []
                 for sta_id, coords in snx_coords.items():
                     if 'STAX' in coords and 'STAY' in coords and 'STAZ' in coords:
-                        # 3D 절대 거리(R) 계산
                         R = np.sqrt(coords['STAX']**2 + coords['STAY']**2 + coords['STAZ']**2)
-                        # 고도 계산
                         altitude = R - R_EARTH
-                        # 국소 중력 계산 (간단한 자유공간 이상 모델)
                         g_loc = G_SI * ((R_EARTH / R)**2)
-                        # 국소 왜곡 지수
                         s_loc = (np.pi**2) / g_loc
                         rows.append([sta_id, R, altitude, g_loc, s_loc])
                         
@@ -117,7 +134,7 @@ if uploaded_file:
 
             # --- B. 시간/일반 데이터 처리 ---
             elif any(ext in fname for ext in ['.sp3', '.clk']):
-                data_type_name = "GNSS SATELLITE (시간 오차)"
+                data_type_name = "GNSS_SATELLITE"
                 unit_str = "μs"
                 rows = []
                 file_iterator = gzip.open(uploaded_file, 'rt', encoding='utf-8', errors='ignore') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file, encoding='utf-8', errors='ignore')
@@ -134,7 +151,7 @@ if uploaded_file:
                 full_df = pd.DataFrame(rows, columns=['ID', 'SI 기준'])
                 
             else:
-                data_type_name = "GENERIC / INDUSTRIAL"
+                data_type_name = "GENERIC_DATA"
                 temp_df = pd.read_csv(uploaded_file) if fname.endswith(('.csv', '.txt')) else pd.read_excel(uploaded_file)
                 numeric_cols = temp_df.select_dtypes(include=np.number).columns.tolist()
                 if numeric_cols:
@@ -156,7 +173,7 @@ if uploaded_file:
                 full_df['남는변수'] = np.float64(full_df['SI 기준']) - full_df['K-Protocol']
                 full_df['보정율 (%)'] = np.where(full_df['SI 기준'] == 0, 100.0, (full_df['K-Protocol'] / full_df['SI 기준']).abs() * 100)
 
-                st.subheader(f"📋 {data_type_name} 전수조사 요약")
+                st.subheader(f"📋 전수조사 요약 (고도 연동 완료)")
                 
                 agg_dict = {'SI 기준': 'mean', 'K-Protocol': 'mean', '보정율 (%)': 'mean', '남는변수': 'mean'}
                 if '고도(m)' in full_df.columns:
@@ -171,9 +188,8 @@ if uploaded_file:
 
                 st.subheader(f"📈 실시간 정밀 지표: {sel_id}")
                 
-                # 고도 추적 UI 렌더링
                 if '고도(m)' in sat_data.columns:
-                    st.info(f"🌍 이 관측소는 3D 추적 결과, 평균 고도 **{sat_data['고도(m)'].iloc[-1]:,.2f}m**에 위치해 있으며, 해당 고도의 국소 왜곡 지수($S_{{loc}}$ = {sat_data['S_loc'].iloc[-1]:.9f})가 적용되었습니다.")
+                    st.info(f"🌍 이 관측소는 3D 추적 결과, 고도 **{sat_data['고도(m)'].iloc[-1]:,.2f}m**에 위치해 있으며, 이에 따른 국소 왜곡 지수($S_{{loc}}$ = {sat_data['S_loc'].iloc[-1]:.9f})가 정밀 적용되었습니다. 고도에 따라 남는변수의 비율이 달라지는 것을 표에서 확인하세요!")
                 
                 c1, c2, c3, c4 = st.columns(4)
                 last = sat_data.iloc[-1]
@@ -191,7 +207,7 @@ if uploaded_file:
 
                 try:
                     pdf_bytes = create_pdf(summary, data_type_name, unit_str)
-                    st.download_button("📄 글로벌 분석 리포트 PDF 다운로드", pdf_bytes, "K_Report_Omni.pdf", "application/pdf")
+                    st.download_button("📄 글로벌 분석 리포트 PDF 다운로드 (에러 해결)", pdf_bytes, "K_Report_Omni.pdf", "application/pdf")
                 except Exception as e:
                     st.error(f"PDF 생성 오류: {e}")
             else:
