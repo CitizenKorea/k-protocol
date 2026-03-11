@@ -2,60 +2,68 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import gzip
+import io
 
-# 페이지 설정
-st.set_page_config(page_title="K-PROTOCOL Analysis Center", layout="wide")
-
-# 1. K-PROTOCOL 핵심 엔진 상수
+# 1. K-PROTOCOL 핵심 상수
 g_si = 9.80665  
 s_earth = (np.pi**2) / g_si
 c_si = 299792458
 c_k = c_si / s_earth
 
-st.title("🛰️ K-PROTOCOL 실전 데이터 분석 센터")
-st.write("표준 단위계의 '삐뚠 자'로 인해 발생한 데이터 왜곡을 실시간으로 교정합니다.")
+st.set_page_config(page_title="K-PROTOCOL Satellite Analyzer", layout="wide")
+st.title("🛰️ K-PROTOCOL 정밀 위성 데이터(SP3) 분석기")
 
-# 사이드바: 이론 요약
-st.sidebar.header("K-PROTOCOL Axioms")
-st.sidebar.write(f"**S_earth:** {s_earth:.9f}")
-st.sidebar.write(f"**Absolute c_k:** {c_k:,.2f} m/s")
+# 파일 업로더 확장 (CSV 및 SP3.GZ 지원)
+uploaded_file = st.file_uploader("SP3 파일(.sp3, .gz) 또는 CSV를 업로드하세요", type=["sp3", "gz", "csv"])
 
-# 2. 데이터 업로드 섹션
-st.divider()
-st.subheader("📁 검증 데이터 업로드")
-uploaded_file = st.file_uploader("GPS 잔차 또는 반도체 계측 데이터(CSV)를 선택하세요", type=["csv"])
+def parse_sp3(file_content):
+    # SP3 파일에서 위성 ID, 시간, 시계 오차(ms)를 추출하는 가벼운 파서
+    rows = []
+    for line in file_content.splitlines():
+        if line.startswith('P'):  # Position & Clock record
+            sat_id = line[1:4]
+            # SP3 규격에 따른 데이터 추출 (단위: km 및 micro-sec)
+            x = float(line[4:18])
+            y = float(line[18:32])
+            z = float(line[32:46])
+            clock_err = float(line[46:60]) # SI 기준 시계 오차
+            rows.append([sat_id, x, y, z, clock_err])
+    return pd.DataFrame(rows, columns=['Sat_ID', 'X', 'Y', 'Z', 'SI_Clock_Error'])
 
 if uploaded_file is not None:
-    # 데이터 읽기
-    df = pd.read_csv(uploaded_file)
-    st.write("✅ 원본 데이터 미리보기:")
-    st.dataframe(df.head())
+    # 파일 형식 판별 및 읽기
+    if uploaded_file.name.endswith('.gz'):
+        with gzip.open(uploaded_file, 'rt') as f:
+            content = f.read()
+            df = parse_sp3(content)
+    elif uploaded_file.name.endswith('.sp3'):
+        content = uploaded_file.getvalue().decode('utf-8')
+        df = parse_sp3(content)
+    else:
+        df = pd.read_csv(uploaded_file)
 
-    # 분석할 컬럼 선택 (예: 'error' 또는 'residual' 컬럼이 있다고 가정)
-    col_to_fix = st.selectbox("보정할 오차 컬럼을 선택하세요", df.columns)
-
-    if st.button("K-Standard 보정 실행"):
-        # 보정 로직: 삐뚠 자 효과(1.288%)를 제거하는 수식 적용
-        df['Corrected_Data'] = df[col_to_fix] / s_earth
-        
-        # 결과 시각화
-        st.subheader("📊 보정 결과 비교")
-        fig = px.line(df, y=[col_to_fix, 'Corrected_Data'], 
-                      title="Original (Red) vs K-Standard Corrected (Blue)",
-                      labels={"value": "Error Value", "index": "Time/Point"},
-                      color_discrete_map={col_to_fix: "red", "Corrected_Data": "blue"})
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.success(f"축사합니다! {col_to_fix}의 기하학적 왜곡이 제거되었습니다.")
-        st.download_button("보정된 데이터 다운로드", df.to_csv(index=False), "corrected_data.csv")
-
-else:
-    st.info("분석할 CSV 파일을 업로드해 주세요. (컬럼명에 '오차' 혹은 '잔차' 수치가 포함되어야 합니다.)")
+    st.success(f"✅ {uploaded_file.name} 데이터를 성공적으로 읽었습니다.")
     
-    # 테스트용 샘플 데이터 생성 버튼
-    if st.sidebar.button("테스트용 샘플 데이터 생성"):
-        test_df = pd.DataFrame({
-            'Time': np.arange(0, 100),
-            'GPS_Residual': np.random.normal(0.002041, 0.0001, 100) # 문서 속 0.002041 반영
-        })
-        st.sidebar.download_button("샘플 CSV 받기", test_df.to_csv(index=False), "sample.csv")
+    # 2. K-PROTOCOL 보정 로직 적용
+    st.subheader("🧪 K-Standard 기하학적 보정 실행")
+    
+    # SI 시계 오차에서 삐뚠 자(S_earth) 효과를 제거하여 진실을 드러냄
+    df['K_Corrected_Clock'] = df['SI_Clock_Error'] / s_earth
+    df['Geometric_Residual'] = df['SI_Clock_Error'] - df['K_Corrected_Clock']
+
+    # 결과 시각화
+    st.write("### 위성별 시계 오차 분석 (SI vs K-Standard)")
+    selected_sat = st.selectbox("분석할 위성 ID를 선택하세요", df['Sat_ID'].unique())
+    sat_df = df[df['Sat_ID'] == selected_sat]
+
+    fig = px.line(sat_df, y=['SI_Clock_Error', 'K_Corrected_Clock'], 
+                  title=f"Satellite {selected_sat}: Geometric Correction",
+                  labels={"value": "Clock Offset (μs)", "index": "Epoch"},
+                  color_discrete_map={"SI_Clock_Error": "red", "K_Corrected_Clock": "blue"})
+    st.plotly_chart(fig, use_container_width=True)
+
+    # 잔차 분석 결과 (0.002041 μs 확인용)
+    avg_residual = sat_df['Geometric_Residual'].mean()
+    st.metric("평균 기하학적 잔차 (K-Protocol Predicted)", f"{avg_residual:.6f} μs")
+    st.write(f"표준 물리학은 이 **{avg_residual:.6f} μs**를 잡음으로 보지만, 이는 우주의 기하학적 필연입니다.")
