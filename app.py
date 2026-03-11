@@ -4,12 +4,10 @@ import numpy as np
 # 페이지 설정
 st.set_page_config(page_title="K-PROTOCOL Standard", page_icon="🌐", layout="wide")
 
-# 스타일 커스텀 (폰트 및 색상)
+# 스타일 커스텀
 st.markdown("""
     <style>
-    .main {
-        background-color: #f5f7f9;
-    }
+    .main { background-color: #f5f7f9; }
     .stMetric {
         background-color: #ffffff;
         padding: 20px;
@@ -55,15 +53,24 @@ st.divider()
 st.subheader("🛰️ GPS 위성 시계 잔차 검증")
 st.write("표준 물리학이 '노이즈'라고 부르며 포기한 잔차는 사실 공간의 기하학적 필연입니다.")
 
-theoretical_residual = 0.002041 
-st.info(f"**K-PROTOCOL 예측 기하 잔차:** `+{theoretical_residual} μs` (매 5분당 관측치)")
+st.info("**K-PROTOCOL 예측 기하 잔차:** `+0.002041 μs` (매 5분당 관측치)")
 
 # 3. 우주 구성 비율 (π-Matrix)
 st.subheader("🌌 우주 구성 비율 시뮬레이션")
 st.write("우주의 거대 구조는 임의의 상수가 아닌, 기하학적 패킹 효율에 의해 결정됩니다.")
 
-dark_energy = (1 - 1/np.pi) * 100 
-dark_matter = (1/np.pi - 1/(2*np.pi**2)) * 100 
-baryon = (1/(2*np.pi**2)) * 100 
+d_energy = (1 - 1/np.pi) * 100 
+d_matter = (1/np.pi - 1/(2*np.pi**2)) * 100 
+baryon_m = (1/(2*np.pi**2)) * 100 
 
-c_col1, c_col2, c_col3 = st
+# 이 부분이 에러가 났던 곳입니다. 확실하게 고쳤습니다.
+c1, c2, c3 = st.columns(3)
+c1.write(f"**암흑 에너지**: {d_energy:.2f}%")
+c2.write(f"**암흑 물질**: {d_matter:.2f}%")
+c3.write(f"**일반 물질**: {baryon_m:.2f}%")
+
+st.success("이 모든 물리량은 단 하나의 마스터 포뮬러 $V = \pi^n / S^k$ 로 통합됩니다.")
+
+# 푸터
+st.markdown("---")
+st.caption("© 2026 K-PROTOCOL Foundation | Based on the Geometric Universality Theory")
