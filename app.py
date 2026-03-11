@@ -6,7 +6,7 @@ import gzip
 from fpdf import FPDF
 import io
 
-# 1. K-PROTOCOL 나노 정밀 물리 공리
+# 1. K-PROTOCOL 핵심 물리 공리
 G_SI = 9.80665
 S_EARTH = (np.pi**2) / G_SI
 C_SI = 299792458
@@ -20,7 +20,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# PDF 엔진
+# 2. PDF 생성 엔진
 def create_pdf(summary_df, data_type):
     pdf = FPDF()
     pdf.add_page()
@@ -47,7 +47,7 @@ def create_pdf(summary_df, data_type):
         pdf.cell(45, 10, f"{row['남는변수']:.9f}", 1, 1, 'C')
     return bytes(pdf.output())
 
-# 사이드바
+# 3. 사이드바
 with st.sidebar:
     st.title("🔬 Omni Control")
     st.divider()
@@ -55,9 +55,9 @@ with st.sidebar:
     st.write(f"**절대 광속 ($c_k$):**\n`{C_K:,.1f} m/s`")
 
 st.title("🛰️ K-PROTOCOL 만물(OMNI) 정밀 분석 센터")
-st.markdown("#### 빅데이터를 나노 단위로 소화하는 최적화 엔진 탑재")
+st.markdown("#### 우주, 지구, 그리고 산업의 모든 데이터를 소수점 9자리로 해체합니다.")
 
-uploaded_file = st.file_uploader("분석할 파일을 업로드하세요 (SP3, CLK, SNX, CSV, XLSX, GZ 등 모든 데이터 가능)", 
+uploaded_file = st.file_uploader("분석할 파일을 업로드하세요 (SP3, CLK, SNX, CSV, XLSX, GZ 등)", 
                                  type=["sp3", "gz", "clk", "snx", "csv", "xlsx", "txt"])
 
 if uploaded_file:
@@ -66,37 +66,43 @@ if uploaded_file:
     data_type_name = "UNIVERSAL"
     
     try:
-        # 로딩 애니메이션 추가 (사용자 안심용)
-        with st.spinner("🚀 거대한 데이터를 나노 단위로 해독 중입니다... (파일 크기에 따라 최대 1~2분 소요)"):
+        with st.spinner("🚀 데이터를 나노 단위로 해독 중입니다... (거대 파일은 1~2분 소요)"):
             
-            # --- A. 특수 GNSS 데이터 (메모리 최적화 스트리밍 읽기 적용) ---
+            # --- A. 특수 GNSS 데이터 (초고속 스트리밍 읽기 적용) ---
             if any(ext in fname for ext in ['.sp3', '.clk', '.snx']):
                 data_type_name = "GNSS / GEODETIC"
                 rows = []
                 
-                # 파일을 한 번에 메모리에 올리지 않고 줄 단위로 열어둠
+                # 메모리 폭발 방지용 진정한 한 줄 읽기 모드
                 if fname.endswith('.gz'):
-                    file_iterator = gzip.open(uploaded_file, 'rt')
+                    file_iterator = gzip.open(uploaded_file, 'rt', encoding='utf-8', errors='ignore')
                 else:
-                    file_iterator = io.StringIO(uploaded_file.getvalue().decode('utf-8'))
+                    file_iterator = io.TextIOWrapper(uploaded_file, encoding='utf-8', errors='ignore')
                 
-                # 한 줄씩 읽어서 필요한 숫자만 빼고 버림 (메모리 폭발 방지)
                 if ".snx" in fname:
                     capture = False
                     for line in file_iterator:
-                        if line.startswith('+SOLUTION/ESTIMATED'): capture = True; continue
-                        if line.startswith('-SOLUTION/ESTIMATED'): capture = False; break
+                        if line.startswith('+SOLUTION/ESTIMATE'): capture = True; continue # 철자 수정 완료!
+                        if line.startswith('-SOLUTION/ESTIMATE'): capture = False; break
                         if capture and 'STAX' in line:
                             p = line.split()
-                            if len(p) >= 9: rows.append([p[2], float(p[8])])
+                            if len(p) >= 9:
+                                try: rows.append([p[2], float(p[8])])
+                                except ValueError: pass
+                                
                 elif ".sp3" in fname:
                     for line in file_iterator:
-                        if line.startswith('P'): rows.append([line[1:4].strip(), float(line[46:60])])
+                        if line.startswith('P'): 
+                            try: rows.append([line[1:4].strip(), float(line[46:60])])
+                            except ValueError: pass
+                            
                 elif ".clk" in fname:
                     for line in file_iterator:
                         if line.startswith('AS'):
                             p = line.split()
-                            if len(p) >= 10: rows.append([p[1], float(p[9])*1e6])
+                            if len(p) >= 10: 
+                                try: rows.append([p[1], float(p[9])*1e6])
+                                except ValueError: pass
                 
                 full_df = pd.DataFrame(rows, columns=['ID', 'SI 기준'])
 
@@ -111,19 +117,17 @@ if uploaded_file:
                 numeric_cols = temp_df.select_dtypes(include=np.number).columns.tolist()
                 
                 if numeric_cols:
-                    st.info("💡 일반 데이터 감지. 보정할 오차(숫자)와 식별자(ID) 컬럼을 선택해 주세요.")
+                    st.info("💡 일반 데이터 감지. 보정할 측정값(오차)과 식별자(ID) 컬럼을 선택해 주세요.")
                     col_c1, col_c2 = st.columns(2)
-                    target_col = col_c1.selectbox("보정할 오차/측정값 컬럼", numeric_cols)
-                    id_col = col_c2.selectbox("데이터를 구분할 ID 컬럼", ['인덱스 사용'] + list(temp_df.columns))
+                    target_col = col_c1.selectbox("보정할 측정값 컬럼", numeric_cols)
+                    id_col = col_c2.selectbox("데이터 구분용 ID 컬럼", ['인덱스 자동 부여'] + list(temp_df.columns))
                     
-                    if id_col == '인덱스 사용': full_df['ID'] = temp_df.index.astype(str)
+                    if id_col == '인덱스 자동 부여': full_df['ID'] = temp_df.index.astype(str)
                     else: full_df['ID'] = temp_df[id_col].astype(str)
                         
                     full_df['SI 기준'] = temp_df[target_col].astype(float)
-                else:
-                    st.error("숫자 데이터를 찾을 수 없습니다.")
 
-            # --- 4. 공통 나노 분석 엔진 적용 ---
+            # --- 4. 공통 나노 분석 계산 및 출력 ---
             if not full_df.empty:
                 full_df = full_df.dropna()
                 
@@ -140,17 +144,18 @@ if uploaded_file:
                     '보정율 (%)': 'mean', '남는변수': 'mean'
                 }).reset_index()
                 
+                # 에러 원인이었던 색칠 기능 제거, 순수하고 빠른 표 출력
                 st.dataframe(summary.style.format({
                     'SI 기준': '{:.6f}', 'K-Protocol': '{:.6f}', 
                     '보정율 (%)': '{:.4f}%', '남는변수': '{:.9f}'
-                }).background_gradient(subset=['보정율 (%)'], cmap='Greens'), use_container_width=True)
+                }), use_container_width=True)
 
                 st.divider()
                 sel_id = st.selectbox("🎯 상세 분석 대상 선택", summary['ID'].unique())
                 sat_data = full_df[full_df['ID'] == sel_id].copy().reset_index()
                 
                 if "GNSS" in data_type_name and str(sel_id).startswith('R'):
-                    st.warning("⚠️ GLONASS(R) 노이즈 필터링이 적용되었습니다.")
+                    st.warning("⚠️ GLONASS(R) 노이즈 필터링 적용 중...")
                     sat_data['SI 기준'] = sat_data['SI 기준'].rolling(window=10).mean()
                     sat_data['K-Protocol'] = sat_data['K-Protocol'].rolling(window=10).mean()
 
@@ -171,9 +176,11 @@ if uploaded_file:
 
                 try:
                     pdf_bytes = create_pdf(summary, data_type_name)
-                    st.download_button("📄 분석 리포트 PDF 다운로드", pdf_bytes, "K_Report_Omni.pdf", "application/pdf")
+                    st.download_button("📄 글로벌 분석 리포트 PDF 다운로드", pdf_bytes, "K_Report_Omni.pdf", "application/pdf")
                 except Exception as e:
-                    st.error(f"PDF 오류: {e}")
+                    st.error(f"PDF 생성 오류: {e}")
+            else:
+                st.warning("⚠️ 파일에서 데이터를 추출하지 못했습니다. 형식이 맞는지 확인해 주세요.")
 
     except Exception as e:
-        st.error(f"데이터 분석 중 오류가 발생했습니다: {e}")
+        st.error(f"데이터 처리 중 알 수 없는 오류가 발생했습니다: {e}")
