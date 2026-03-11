@@ -1,76 +1,61 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
+import plotly.express as px
 
 # 페이지 설정
-st.set_page_config(page_title="K-PROTOCOL Standard", page_icon="🌐", layout="wide")
+st.set_page_config(page_title="K-PROTOCOL Analysis Center", layout="wide")
 
-# 스타일 커스텀
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stMetric {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 제목 및 서문
-st.title("🌐 K-PROTOCOL: The Scale of Truth")
-st.markdown("### 인류가 사용하는 '1미터'는 지구 중력에 오염된 '삐뚠 자'입니다.")
-st.write("본 시스템은 K-PROTOCOL의 기하학적 공리를 바탕으로 현대 물리학의 단위 오차를 실시간으로 교정합니다.")
-
-st.divider()
-
-# 1. 기본 상수 및 왜곡 지수 계산
+# 1. K-PROTOCOL 핵심 엔진 상수
 g_si = 9.80665  
-pi_sq = np.pi**2  
-c_si = 299792458  
+s_earth = (np.pi**2) / g_si
+c_si = 299792458
+c_k = c_si / s_earth
 
-s_earth = pi_sq / g_si  
-c_k = c_si / s_earth  
+st.title("🛰️ K-PROTOCOL 실전 데이터 분석 센터")
+st.write("표준 단위계의 '삐뚠 자'로 인해 발생한 데이터 왜곡을 실시간으로 교정합니다.")
 
-# 메인 지표 출력
-col1, col2, col3 = st.columns(3)
+# 사이드바: 이론 요약
+st.sidebar.header("K-PROTOCOL Axioms")
+st.sidebar.write(f"**S_earth:** {s_earth:.9f}")
+st.sidebar.write(f"**Absolute c_k:** {c_k:,.2f} m/s")
 
-with col1:
-    st.metric("지구 왜곡 지수 (S_earth)", f"{s_earth:.9f}")
-    st.caption("우주 기하학적 기준($\pi^2$) 대비 지구의 공간 굴절률")
-
-with col2:
-    st.metric("절대 광속 (c_k)", f"{c_k:,.1f} m/s")
-    st.caption("삐뚠 자를 바로잡은 우주의 실제 정보 전달 속도")
-
-with col3:
-    st.metric("기하학적 오차율", "1.288%")
-    st.caption("표준 SI 단위계가 가진 본질적 수축 비율")
-
+# 2. 데이터 업로드 섹션
 st.divider()
+st.subheader("📁 검증 데이터 업로드")
+uploaded_file = st.file_uploader("GPS 잔차 또는 반도체 계측 데이터(CSV)를 선택하세요", type=["csv"])
 
-# 2. 실증 데이터: GPS 위성 시계 잔차
-st.subheader("🛰️ GPS 위성 시계 잔차 검증")
-st.write("표준 물리학이 '노이즈'라고 부르며 포기한 잔차는 사실 공간의 기하학적 필연입니다.")
+if uploaded_file is not None:
+    # 데이터 읽기
+    df = pd.read_csv(uploaded_file)
+    st.write("✅ 원본 데이터 미리보기:")
+    st.dataframe(df.head())
 
-st.info("**K-PROTOCOL 예측 기하 잔차:** `+0.002041 μs` (매 5분당 관측치)")
+    # 분석할 컬럼 선택 (예: 'error' 또는 'residual' 컬럼이 있다고 가정)
+    col_to_fix = st.selectbox("보정할 오차 컬럼을 선택하세요", df.columns)
 
-# 3. 우주 구성 비율 (π-Matrix)
-st.subheader("🌌 우주 구성 비율 시뮬레이션")
-st.write("우주의 거대 구조는 임의의 상수가 아닌, 기하학적 패킹 효율에 의해 결정됩니다.")
+    if st.button("K-Standard 보정 실행"):
+        # 보정 로직: 삐뚠 자 효과(1.288%)를 제거하는 수식 적용
+        df['Corrected_Data'] = df[col_to_fix] / s_earth
+        
+        # 결과 시각화
+        st.subheader("📊 보정 결과 비교")
+        fig = px.line(df, y=[col_to_fix, 'Corrected_Data'], 
+                      title="Original (Red) vs K-Standard Corrected (Blue)",
+                      labels={"value": "Error Value", "index": "Time/Point"},
+                      color_discrete_map={col_to_fix: "red", "Corrected_Data": "blue"})
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.success(f"축사합니다! {col_to_fix}의 기하학적 왜곡이 제거되었습니다.")
+        st.download_button("보정된 데이터 다운로드", df.to_csv(index=False), "corrected_data.csv")
 
-d_energy = (1 - 1/np.pi) * 100 
-d_matter = (1/np.pi - 1/(2*np.pi**2)) * 100 
-baryon_m = (1/(2*np.pi**2)) * 100 
-
-# 이 부분이 에러가 났던 곳입니다. 확실하게 고쳤습니다.
-c1, c2, c3 = st.columns(3)
-c1.write(f"**암흑 에너지**: {d_energy:.2f}%")
-c2.write(f"**암흑 물질**: {d_matter:.2f}%")
-c3.write(f"**일반 물질**: {baryon_m:.2f}%")
-
-st.success("이 모든 물리량은 단 하나의 마스터 포뮬러 $V = \pi^n / S^k$ 로 통합됩니다.")
-
-# 푸터
-st.markdown("---")
-st.caption("© 2026 K-PROTOCOL Foundation | Based on the Geometric Universality Theory")
+else:
+    st.info("분석할 CSV 파일을 업로드해 주세요. (컬럼명에 '오차' 혹은 '잔차' 수치가 포함되어야 합니다.)")
+    
+    # 테스트용 샘플 데이터 생성 버튼
+    if st.sidebar.button("테스트용 샘플 데이터 생성"):
+        test_df = pd.DataFrame({
+            'Time': np.arange(0, 100),
+            'GPS_Residual': np.random.normal(0.002041, 0.0001, 100) # 문서 속 0.002041 반영
+        })
+        st.sidebar.download_button("샘플 CSV 받기", test_df.to_csv(index=False), "sample.csv")
