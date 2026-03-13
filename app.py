@@ -117,7 +117,6 @@ with col_lang:
 
 st.divider()
 
-# --- 창시자 철학 및 수학적 공식 (Expander 내에 정보 렌더링) ---
 with st.expander(t['bg_title'], expanded=True):
     st.info(t['bg_text'])
 
@@ -127,26 +126,30 @@ with c1:
 with c2:
     st.markdown(f'<div class="metric-box"><div class="metric-title">GITHUB FORKS</div><div class="metric-value">{real_forks}</div></div>', unsafe_allow_html=True)
 with c3:
-    st.markdown("**Detailed Theoretical Evidence**")
-    st.markdown("📄 [Full Theoretical Background (Zenodo)](https://doi.org/10.5281/zenodo.18976813)")
-    st.markdown("📡 [Raw Data Directory for Verification](http://garner.ucsd.edu/pub/products/2392/)")
+    st.markdown("**🔗 Detailed Theoretical Evidence & References**")
+    st.markdown("<div class='link-box'>📄 <a href='https://doi.org/10.5281/zenodo.18976813' target='_blank'>Full Theoretical Background (Zenodo)</a></div>", unsafe_allow_html=True)
+    st.markdown("<div class='link-box'>📡 <a href='http://garner.ucsd.edu/pub/products/2392/' target='_blank'>Raw Data Directory for Verification</a></div>", unsafe_allow_html=True)
 
 st.divider()
 
 # ==========================================
-# 6. PDF Generation (실측 데이터 기반)
+# 6. PDF Generation (Data Epoch 포함 버전)
 # ==========================================
-def create_integrity_report(df, file_type, r_sq=None, max_res=None):
+def create_integrity_report(df, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("helvetica", 'B', 16)
     pdf.cell(190, 10, "K-PROTOCOL Analytical Integrity Report", 0, 1, 'C')
     pdf.ln(5)
+    
+    # [데이터 투명성] 파일명, 원본 데이터 관측 시간(Epoch), 리포트 발행 시간 명시
     pdf.set_font("helvetica", '', 10)
-    pdf.cell(190, 8, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
+    pdf.cell(190, 8, f"Target Source File: {file_name}", 0, 1, 'L')
+    pdf.cell(190, 8, f"Data Epoch (Observation Time): {data_epoch}", 0, 1, 'L')
+    pdf.cell(190, 8, f"Report Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
     pdf.cell(190, 8, f"Algorithm: K-PROTOCOL (Patent Pending)", 0, 1, 'L')
     pdf.cell(190, 8, f"Author: CK (CitizenKorea)", 0, 1, 'L')
-    pdf.ln(10)
+    pdf.ln(8)
     
     if file_type == 'SNX' and not df.empty:
         pdf.set_font("helvetica", 'B', 12)
@@ -173,7 +176,8 @@ def create_integrity_report(df, file_type, r_sq=None, max_res=None):
         for _, row in df.head(40).iterrows():
             pdf.cell(30, 8, str(row['Satellite_ID'])[:15], 1, 0, 'C'); pdf.cell(50, 8, f"{row['Clock_Bias_Raw_us']:.6f}", 1, 0, 'C'); pdf.cell(50, 8, f"{row['Calibrated_Bias_us']:.6f}", 1, 0, 'C'); pdf.cell(50, 8, f"{row['Temporal_Residual_us']:.6f}", 1, 1, 'C')
 
-    pdf.ln(15); pdf.set_font("helvetica", 'I', 9); pdf.multi_cell(190, 6, "Notice: Calibration results derived directly from uploaded raw data. Truth lies within the data.")
+    pdf.ln(15); pdf.set_font("helvetica", 'I', 9)
+    pdf.multi_cell(190, 6, "Notice: All calculation results are mathematically derived directly from the uploaded raw data without any manipulation. The truth lies within the data.")
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
@@ -186,14 +190,20 @@ if uploaded_file:
     fname = uploaded_file.name.lower()
     df = pd.DataFrame()
     file_type_flag = None; r_sq = None; max_res = None
+    data_epoch = "Time/Epoch data not explicitly found in header" # 기본값 설정
     
-    with st.spinner("Analyzing data integrity..."):
+    with st.spinner("Analyzing data integrity & Extracting Data Epoch..."):
+        # --- SNX Parser ---
         if ".snx" in fname:
             file_type_flag = 'SNX'
             snx_data = {}
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             capture = False
             for line in f:
+                # 파일 내 실제 관측 시간(Epoch) 파싱
+                if line.startswith('%=SNX'):
+                    data_epoch = f"SNX Base Header [{line.strip()[:50]}]"
+                
                 if line.startswith('+SOLUTION/ESTIMATE'): capture = True; continue
                 if line.startswith('-SOLUTION/ESTIMATE'): capture = False; break
                 if capture and any(a in line for a in ['STAX', 'STAY', 'STAZ']):
@@ -224,10 +234,22 @@ if uploaded_file:
                 c1m.metric("Local Gravity (g_loc)", f"{df_s['g_loc']:.6f}"); c2m.metric("Metric (S_loc)", f"{df_s['S_loc']:.7f}"); c3m.metric("Residual (m)", f"{df_s['Residual']:,.2f}")
                 st.dataframe(df, use_container_width=True)
 
+        # --- SP3/CLK Parser ---
         elif any(x in fname for x in ['.sp3', '.clk']):
             file_type_flag = 'SP3'; rows = []
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             for line in f:
+                # SP3 파일 내 실제 관측 시간대(Epoch) 파싱
+                if "sp3" in fname and line.startswith('* ') and "not explicitly found" in data_epoch:
+                    data_epoch = f"SP3 Start Epoch: {line[2:25].strip()}"
+                
+                # CLK 파일 내 실제 관측 시간대(Epoch) 파싱
+                if "clk" in fname and line.startswith('AS ') and "not explicitly found" in data_epoch:
+                    p = line.split()
+                    if len(p) >= 8:
+                        data_epoch = f"CLK First Epoch: {p[2]}-{p[3]}-{p[4]} {p[5]}:{p[6]}:{p[7]}"
+                
+                # 시계 오차 데이터 파싱 및 결측치 차단
                 if "sp3" in fname and line.startswith('P'):
                     try:
                         s, b = line[1:4].strip(), float(line[46:60])
@@ -250,9 +272,29 @@ if uploaded_file:
                 st.plotly_chart(px.line(df_sat, y=['Clock_Bias_Raw_us', 'Calibrated_Bias_us'], title=f"Clock Bias: SI Standard vs K-PROTOCOL ({sel_sat})", template="plotly_white", color_discrete_map={'Clock_Bias_Raw_us': '#6C757D', 'Calibrated_Bias_us': '#E63946'}), use_container_width=True)
                 st.dataframe(df, use_container_width=True)
 
+    # ==========================================
+    # 8. Export & Verification (Data Epoch 추가 전달)
+    # ==========================================
     if not df.empty and file_type_flag:
-        st.markdown(f"### {t['insight_msg']}")
-        st.download_button(label="Download Analytical Integrity Report (PDF)", data=create_integrity_report(df, file_type_flag, r_sq, max_res), file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d')}.pdf", mime="application/pdf", type="primary")
+        st.info(f"💡 {t['insight_msg']}")
+        st.download_button(label="📄 Download Analytical Integrity Report (PDF)", 
+                           data=create_integrity_report(df, file_type_flag, uploaded_file.name, data_epoch, r_sq, max_res), 
+                           file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
+                           mime="application/pdf", type="primary")
 
+# ==========================================
+# 9. Footer (인용구 강화)
+# ==========================================
 st.divider()
-st.caption("© 2026. Patent Pending: The K-PROTOCOL algorithm and related papers are patent pending.")
+c_foot1, c_foot2 = st.columns([2, 1])
+
+with c_foot1:
+    st.markdown("**📝 Citation (논문 인용)**")
+    st.code("CK (CitizenKorea). (2026). K-PROTOCOL: Grand Unification via Sloc. Zenodo. https://doi.org/10.5281/zenodo.18976813", language="text")
+
+with c_foot2:
+    st.markdown("**🤝 Collaboration & Inquiries**")
+    st.markdown("Email: [estake@naver.com](mailto:estake@naver.com)")
+    st.markdown("Author: CK (CitizenKorea)")
+
+st.caption("© 2026. Patent Pending: The K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
