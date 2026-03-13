@@ -19,7 +19,7 @@ C_K = C_SI / S_EARTH
 R_EARTH = 6371000
 
 # ==========================================
-# 2. Page Configuration & CSS Styling (밝은 테마)
+# 2. Page Configuration & CSS Styling
 # ==========================================
 st.set_page_config(page_title="K-PROTOCOL Analysis Center", layout="wide", page_icon="🛰️")
 
@@ -36,7 +36,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 깃허브 실시간 데이터 연동 (조작 없는 실제 수치)
+# 3. 깃허브 실시간 데이터 연동 (조작 없음)
 # ==========================================
 @st.cache_data(ttl=600)
 def get_github_stats():
@@ -150,7 +150,7 @@ def create_integrity_report(df, file_type, r_sq=None, max_res=None):
         pdf.set_font("helvetica", '', 10)
         
         avg_residual = df['Temporal_Residual_us'].abs().mean()
-        pdf.cell(190, 8, f"Analyzed Satellites: {len(df)}", 0, 1, 'L')
+        pdf.cell(190, 8, f"Analyzed Satellites: {len(df['Satellite_ID'].unique())}", 0, 1, 'L')
         pdf.cell(190, 8, f"Average Temporal Residual Extracted: {avg_residual:.6f} us", 0, 1, 'L')
         
         pdf.ln(5)
@@ -229,7 +229,6 @@ if uploaded_file:
                                  template="plotly_white")
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 에러 수정: 숫자 컬럼만 지정하여 포맷팅 적용
                 format_dict_snx = {'Altitude': '{:.6f}', 'g_loc': '{:.6f}', 'S_loc': '{:.6f}', 'SI_Dist': '{:.6f}', 'K_Dist': '{:.6f}', 'Residual': '{:.6f}'}
                 st.dataframe(df[['ID', 'Altitude', 'SI_Dist', 'K_Dist', 'Residual']].style.format(format_dict_snx), use_container_width=True)
 
@@ -256,20 +255,40 @@ if uploaded_file:
                 st.subheader("Data Calculation Results (SP3/CLK)")
                 st.write("Extracting Temporal Residuals by applying K-PROTOCOL base metric (S_earth) to the Raw Clock Bias.")
                 
-                # 시각화 변경: 막대그래프 -> 마커가 있는 선형 그래프(Line chart) + 절대 영점(0) 기준선
-                fig = px.line(df.head(50), x='Satellite_ID', y='Temporal_Residual_us', markers=True,
-                             title="Extracted Temporal Residuals per Satellite (μs)",
+                # 1. 막대 그래프 (전체 위성의 시간 잔차 평균)
+                df_mean = df.groupby('Satellite_ID', as_index=False)['Temporal_Residual_us'].mean()
+                fig_bar = px.bar(df_mean, x='Satellite_ID', y='Temporal_Residual_us',
+                             title="Average Temporal Residuals per Satellite (μs)",
                              labels={'Temporal_Residual_us': 'Temporal Residual (μs)', 'Satellite_ID': 'Satellite ID'},
                              template="plotly_white",
                              color_discrete_sequence=["#0056B3"])
+                st.plotly_chart(fig_bar, use_container_width=True)
                 
-                # 기준선 추가 (y=0)
-                fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Absolute Zero (0 μs)", annotation_position="bottom right")
-                fig.update_traces(line=dict(width=2))
+                st.divider()
                 
-                st.plotly_chart(fig, use_container_width=True)
+                # 2. 개별 위성 선택 이중 선형 그래프 (SI vs K-PROTOCOL)
+                st.markdown("#### Detailed Analysis: SI Standard vs K-PROTOCOL")
+                unique_sats = df['Satellite_ID'].unique()
+                selected_sat = st.selectbox("Select a Satellite ID to view timeline comparison:", unique_sats)
                 
-                # 에러 수정: 숫자 컬럼만 지정하여 포맷팅 적용
+                # 선택한 위성 데이터만 필터링
+                df_sat = df[df['Satellite_ID'] == selected_sat].reset_index(drop=True)
+                
+                # 두 개의 선형 그래프 출력 (Raw vs Calibrated)
+                fig_line = px.line(df_sat, y=['Clock_Bias_Raw_us', 'Calibrated_Bias_us'],
+                                 title=f"Clock Bias Comparison for Satellite {selected_sat} (μs)",
+                                 labels={'index': 'Data Points (Time)', 'value': 'Clock Bias (μs)', 'variable': 'Standard'},
+                                 template="plotly_white",
+                                 color_discrete_map={'Clock_Bias_Raw_us': '#6C757D', 'Calibrated_Bias_us': '#E63946'})
+                
+                # 범례 이름 깔끔하게 변경
+                newnames = {'Clock_Bias_Raw_us': 'SI Standard (Raw)', 'Calibrated_Bias_us': 'K-PROTOCOL (Calibrated)'}
+                fig_line.for_each_trace(lambda t: t.update(name = newnames[t.name], legendgroup = newnames[t.name], hovertemplate = t.hovertemplate.replace(t.name, newnames[t.name])))
+                fig_line.update_traces(mode='lines+markers')
+                
+                st.plotly_chart(fig_line, use_container_width=True)
+                
+                # 에러 방지 데이터 표 출력
                 format_dict_sp3 = {'Clock_Bias_Raw_us': '{:.6f}', 'Calibrated_Bias_us': '{:.6f}', 'Temporal_Residual_us': '{:.6f}'}
                 st.dataframe(df.style.format(format_dict_sp3), use_container_width=True)
 
