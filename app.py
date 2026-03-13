@@ -175,7 +175,7 @@ def create_integrity_report(df, file_type, r_sq=None, max_res=None):
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
 # ==========================================
-# 7. Dynamic Analysis Engine (순수 연산)
+# 7. Dynamic Analysis Engine (순수 연산 및 시각화)
 # ==========================================
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz"])
 
@@ -228,7 +228,10 @@ if uploaded_file:
                                  title=f"Actual Correlation | R² = {r_sq:.7f}%",
                                  template="plotly_white")
                 st.plotly_chart(fig, use_container_width=True)
-                st.dataframe(df[['ID', 'Altitude', 'SI_Dist', 'K_Dist', 'Residual']].style.format(precision=6), use_container_width=True)
+                
+                # 에러 수정: 숫자 컬럼만 지정하여 포맷팅 적용
+                format_dict_snx = {'Altitude': '{:.6f}', 'g_loc': '{:.6f}', 'S_loc': '{:.6f}', 'SI_Dist': '{:.6f}', 'K_Dist': '{:.6f}', 'Residual': '{:.6f}'}
+                st.dataframe(df[['ID', 'Altitude', 'SI_Dist', 'K_Dist', 'Residual']].style.format(format_dict_snx), use_container_width=True)
 
         # --- SP3/CLK Parser ---
         elif any(x in fname for x in ['.sp3', '.clk']):
@@ -253,14 +256,22 @@ if uploaded_file:
                 st.subheader("Data Calculation Results (SP3/CLK)")
                 st.write("Extracting Temporal Residuals by applying K-PROTOCOL base metric (S_earth) to the Raw Clock Bias.")
                 
-                fig = px.bar(df.head(50), x='Satellite_ID', y='Temporal_Residual_us',
+                # 시각화 변경: 막대그래프 -> 마커가 있는 선형 그래프(Line chart) + 절대 영점(0) 기준선
+                fig = px.line(df.head(50), x='Satellite_ID', y='Temporal_Residual_us', markers=True,
                              title="Extracted Temporal Residuals per Satellite (μs)",
                              labels={'Temporal_Residual_us': 'Temporal Residual (μs)', 'Satellite_ID': 'Satellite ID'},
                              template="plotly_white",
                              color_discrete_sequence=["#0056B3"])
                 
+                # 기준선 추가 (y=0)
+                fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Absolute Zero (0 μs)", annotation_position="bottom right")
+                fig.update_traces(line=dict(width=2))
+                
                 st.plotly_chart(fig, use_container_width=True)
-                st.dataframe(df.style.format(precision=6), use_container_width=True)
+                
+                # 에러 수정: 숫자 컬럼만 지정하여 포맷팅 적용
+                format_dict_sp3 = {'Clock_Bias_Raw_us': '{:.6f}', 'Calibrated_Bias_us': '{:.6f}', 'Temporal_Residual_us': '{:.6f}'}
+                st.dataframe(df.style.format(format_dict_sp3), use_container_width=True)
 
     # ==========================================
     # 8. Philosophical Popup & Export
