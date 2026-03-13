@@ -19,7 +19,7 @@ C_K = C_SI / S_EARTH
 R_EARTH = 6371000
 
 # ==========================================
-# 2. Page Configuration & CSS Styling
+# 2. Page Configuration & CSS Styling (밝은 테마)
 # ==========================================
 st.set_page_config(page_title="K-PROTOCOL Analysis Center", layout="wide", page_icon="🛰️")
 
@@ -36,7 +36,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 깃허브 실시간 데이터 연동 (조작 없음)
+# 3. 깃허브 실시간 데이터 연동 (조작 없는 실제 수치)
 # ==========================================
 @st.cache_data(ttl=600)
 def get_github_stats():
@@ -232,18 +232,28 @@ if uploaded_file:
                 format_dict_snx = {'Altitude': '{:.6f}', 'g_loc': '{:.6f}', 'S_loc': '{:.6f}', 'SI_Dist': '{:.6f}', 'K_Dist': '{:.6f}', 'Residual': '{:.6f}'}
                 st.dataframe(df[['ID', 'Altitude', 'SI_Dist', 'K_Dist', 'Residual']].style.format(format_dict_snx), use_container_width=True)
 
-        # --- SP3/CLK Parser ---
+        # --- SP3/CLK Parser (결측치 필터링 완벽 적용) ---
         elif any(x in fname for x in ['.sp3', '.clk']):
             file_type_flag = 'SP3'
             rows = []
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             for line in f:
                 if "sp3" in fname and line.startswith('P'):
-                    try: rows.append([line[1:4].strip(), float(line[46:60])])
+                    try: 
+                        sat_id = line[1:4].strip()
+                        clock_bias = float(line[46:60])
+                        # 999999.999999 등 에러/결측치 데이터(Dummy Data) 원천 차단
+                        if abs(clock_bias) < 900000.0:
+                            rows.append([sat_id, clock_bias])
                     except: pass
                 elif "clk" in fname and line.startswith('AS'):
                     p = line.split()
-                    if len(p) >= 10: rows.append([p[1], float(p[9])*1e6])
+                    if len(p) >= 10: 
+                        sat_id = p[1]
+                        clock_bias_us = float(p[9]) * 1e6
+                        # CLK 파일 결측치 원천 차단
+                        if abs(clock_bias_us) < 900000.0:
+                            rows.append([sat_id, clock_bias_us])
             
             df = pd.DataFrame(rows, columns=['Satellite_ID', 'Clock_Bias_Raw_us'])
             
