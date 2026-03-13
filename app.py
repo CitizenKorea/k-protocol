@@ -29,7 +29,6 @@ st.markdown("""
     .metric-box { background-color: #FFFFFF; padding: 20px; border-left: 4px solid #0056B3; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .metric-title { font-size: 14px; color: #6C757D; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
     .metric-value { font-size: 24px; font-weight: 700; color: #212529; }
-    .philosophical-quote { background-color: #FFFFFF; border: 1px solid #DEE2E6; border-radius: 8px; padding: 25px; color: #495057; text-align: left; margin-bottom: 30px; line-height: 1.8; }
     .link-box a { color: #0056B3; text-decoration: none; font-weight: bold; }
     hr { border-color: #DEE2E6; }
     </style>
@@ -63,16 +62,19 @@ i18n = {
     'KOR': {
         'title': "K-PROTOCOL 오픈 분석 센터",
         'subtitle': "데이터로 증명하고, 스스로 판단하십시오.",
-        'bg_title': "⚖️ 왜 기존 오차가 발생하는가? (SI 단위계의 한계)",
-        'bg_text': """
-        현재 정밀 데이터에서 발생하는 정체 모를 오차들은 **'순환논리에 빠진 기존 SI 단위계'**를 그대로 사용하기 때문에 발생합니다. 
-        빛의 속도로 거리를 정의하고, 다시 그 거리로 빛의 속도를 측정하는 모순된 체계는 지구 중력에 의한 시공간 왜곡을 보정할 수 없습니다.
-        
-        K-PROTOCOL은 절대 기하학적 상수인 **$S_{earth}$**와 보정 광속 **$c_k$**를 통해 이 순환논리를 타파하고, 
-        각 지점의 고도에 따른 **$S_{loc}$** 계수를 적용하여 가장 정밀하고 정확한 진실된 값을 도출합니다.
-        
-        상세한 수학적 근거와 이론적 배경은 아래 **[Zenodo 링크]**를 통해 확인하실 수 있습니다. 
-        당신의 데이터를 업로드하여 기존 표준 속에 숨겨진 진실을 직접 목격하십시오.
+        'bg_title': "⚖️ 왜 기존 오차가 발생하는가? (SI 단위계의 순환논리와 한계)",
+        'bg_text': r"""
+현재 정밀 데이터에서 발생하는 정체 모를 오차들은 **'순환논리에 빠진 기존 SI 단위계'**를 그대로 사용하기 때문에 발생합니다. 빛의 속도로 거리를 정의하고, 다시 그 거리로 빛의 속도를 측정하는 모순된 체계는 지구 중력에 의한 시공간 왜곡을 보정할 수 없습니다.
+
+K-PROTOCOL은 절대 기하학적 상수인 $S_{earth}$와 보정 광속 $c_k$를 통해 이 순환논리를 타파합니다.
+* **지구 절대 척도 ($S_{earth}$)**: $\frac{\pi^2}{g_{si}} = \frac{\pi^2}{9.80665} \approx 1.006494$
+* **K-보정 광속 ($c_k$)**: $\frac{c_{si}}{S_{earth}} = \frac{299,792,458}{1.006494...} \approx 297,858,458.1 \text{ m/s}$
+
+나아가, 각 지점의 고도($h$)와 지구 반경($R$)에 따른 **국소 중력($g_{loc}$)**을 반영하여 개별 척도 계수($S_{loc}$)를 산출함으로써 가장 정밀하고 진실된 물리 값을 도출합니다.
+* **국소 중력 ($g_{loc}$)**: $g_{si} \times \left(\frac{R_{earth}}{R_{earth} + h}\right)^2$
+* **국소 척도 계수 ($S_{loc}$)**: $\frac{\pi^2}{g_{loc}}$
+
+상세한 수학적 근거와 이론적 배경은 아래 **Zenodo 링크**를 통해 확인하실 수 있습니다. 당신의 데이터를 업로드하여 기존 표준 속에 숨겨진 진실을 직접 목격하십시오.
         """,
         'upload_prompt': "SNX, SP3, CLK 파일을 드래그 앤 드롭 하십시오",
         'insight_msg': "이 수치는 수학적 사실입니다. 정답은 오직 데이터 속에 있습니다.",
@@ -80,15 +82,19 @@ i18n = {
     'ENG': {
         'title': "K-PROTOCOL Open Analysis Center",
         'subtitle': "Let the data speak. Judge for yourself.",
-        'bg_title': "⚖️ Why Do Errors Occur? (Limitations of SI Units)",
-        'bg_text': """
-        The persistent errors found in modern precision data arise from the **'circular logic of the conventional SI unit system.'** A system that defines distance by the speed of light, and then measures light by that same distance, is fundamentally incapable of calibrating the geometric distortions of spacetime.
-        
-        K-PROTOCOL breaks this cycle by utilizing the universal geometric constant **$S_{earth}$** and the calibrated speed of light **$c_k$**. 
-        By applying the location-specific **$S_{loc}$** factor, it derives the most precise and authentic values possible.
-        
-        For detailed mathematical evidence and theoretical background, please refer to the **[Zenodo Link]** below. 
-        Upload your data to witness the truth hidden beneath conventional standards.
+        'bg_title': "⚖️ Why Do Errors Occur? (Circular Logic and Limitations of SI Units)",
+        'bg_text': r"""
+The persistent errors found in modern precision data arise from the **'circular logic of the conventional SI unit system.'** A system that defines distance by the speed of light, and then measures light by that same distance, is fundamentally incapable of calibrating the geometric distortions of spacetime.
+
+K-PROTOCOL breaks this cycle utilizing the universal geometric constant $S_{earth}$ and the calibrated speed of light $c_k$.
+* **Earth Absolute Metric ($S_{earth}$)**: $\frac{\pi^2}{g_{si}} = \frac{\pi^2}{9.80665} \approx 1.006494$
+* **Calibrated Speed of Light ($c_k$)**: $\frac{c_{si}}{S_{earth}} = \frac{299,792,458}{1.006494...} \approx 297,858,458.1 \text{ m/s}$
+
+Furthermore, by accounting for the **local gravity ($g_{loc}$)** at each point and altitude ($h$) to derive the specific metric factor ($S_{loc}$), it reveals the most precise and authentic physical values.
+* **Local Gravity ($g_{loc}$)**: $g_{si} \times \left(\frac{R_{earth}}{R_{earth} + h}\right)^2$
+* **Local Metric Factor ($S_{loc}$)**: $\frac{\pi^2}{g_{loc}}$
+
+For detailed mathematical evidence and theoretical background, please refer to the **Zenodo Link** below. Upload your data to witness the truth hidden beneath conventional standards.
         """,
         'upload_prompt': "Drag and drop SNX, SP3, or CLK files",
         'insight_msg': "These figures are mathematical facts. The answer lies within the data.",
@@ -101,8 +107,8 @@ t = i18n[lang]
 # ==========================================
 col_title, col_lang = st.columns([8, 1])
 with col_title:
-    st.markdown(f"<h1 style='color: #212529;'>{t['title']}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h4 style='color: #6C757D; font-weight: 300;'>{t['subtitle']}</h4>", unsafe_allow_html=True)
+    st.markdown(f"# {t['title']}")
+    st.markdown(f"#### {t['subtitle']}")
 with col_lang:
     selected_lang = st.radio("Language", ["ENG", "KOR"], label_visibility="collapsed", horizontal=True)
     if selected_lang != st.session_state['lang']:
@@ -111,9 +117,9 @@ with col_lang:
 
 st.divider()
 
-# --- 창시자 철학 및 배경 설명 섹션 ---
+# --- 창시자 철학 및 수학적 공식 (Expander 내에 정보 렌더링) ---
 with st.expander(t['bg_title'], expanded=True):
-    st.markdown(f"<div class='philosophical-quote'>{t['bg_text']}</div>", unsafe_allow_html=True)
+    st.info(t['bg_text'])
 
 c1, c2, c3 = st.columns([1, 1, 2])
 with c1:
@@ -122,8 +128,8 @@ with c2:
     st.markdown(f'<div class="metric-box"><div class="metric-title">GITHUB FORKS</div><div class="metric-value">{real_forks}</div></div>', unsafe_allow_html=True)
 with c3:
     st.markdown("**Detailed Theoretical Evidence**")
-    st.markdown("<div class='link-box'>📄 <a href='https://doi.org/10.5281/zenodo.18976813' target='_blank'>Full Theoretical Background (Zenodo)</a></div>", unsafe_allow_html=True)
-    st.markdown("<div class='link-box'>📡 <a href='http://garner.ucsd.edu/pub/products/2392/' target='_blank'>Raw Data Directory for Verification</a></div>", unsafe_allow_html=True)
+    st.markdown("📄 [Full Theoretical Background (Zenodo)](https://doi.org/10.5281/zenodo.18976813)")
+    st.markdown("📡 [Raw Data Directory for Verification](http://garner.ucsd.edu/pub/products/2392/)")
 
 st.divider()
 
@@ -215,7 +221,7 @@ if uploaded_file:
                 sel_station = st.selectbox("Select Station ID:", df['ID'].unique())
                 df_s = df[df['ID'] == sel_station].iloc[0]
                 c1m, c2m, c3m = st.columns(3)
-                c1m.metric("g_loc", f"{df_s['g_loc']:.6f}"); c2m.metric("S_loc", f"{df_s['S_loc']:.7f}"); c3m.metric("Residual (m)", f"{df_s['Residual']:,.2f}")
+                c1m.metric("Local Gravity (g_loc)", f"{df_s['g_loc']:.6f}"); c2m.metric("Metric (S_loc)", f"{df_s['S_loc']:.7f}"); c3m.metric("Residual (m)", f"{df_s['Residual']:,.2f}")
                 st.dataframe(df, use_container_width=True)
 
         elif any(x in fname for x in ['.sp3', '.clk']):
@@ -245,7 +251,7 @@ if uploaded_file:
                 st.dataframe(df, use_container_width=True)
 
     if not df.empty and file_type_flag:
-        st.markdown(f"<div class='philosophical-quote'>\"{t['insight_msg']}\"</div>", unsafe_allow_html=True)
+        st.markdown(f"### {t['insight_msg']}")
         st.download_button(label="Download Analytical Integrity Report (PDF)", data=create_integrity_report(df, file_type_flag, r_sq, max_res), file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d')}.pdf", mime="application/pdf", type="primary")
 
 st.divider()
