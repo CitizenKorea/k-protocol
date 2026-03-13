@@ -19,7 +19,7 @@ C_K = C_SI / S_EARTH
 R_EARTH = 6371000
 
 # ==========================================
-# 2. Page Configuration & CSS Styling
+# 2. Page Configuration & CSS Styling (밝은 테마)
 # ==========================================
 st.set_page_config(page_title="K-PROTOCOL Analysis Center", layout="wide", page_icon="🛰️")
 
@@ -76,7 +76,7 @@ i18n = {
 t = i18n[lang]
 
 # ==========================================
-# 5. Header
+# 5. Header & Trust Metrics
 # ==========================================
 col_title, col_lang = st.columns([8, 1])
 with col_title:
@@ -103,7 +103,7 @@ with c3:
 st.divider()
 
 # ==========================================
-# 6. PDF Generation (가짜 수치 완전 삭제, 100% 실측 데이터 연동)
+# 6. PDF Generation (100% 실측 데이터 기반)
 # ==========================================
 def create_integrity_report(df, file_type, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -118,12 +118,12 @@ def create_integrity_report(df, file_type, r_sq=None, max_res=None):
     pdf.cell(190, 8, f"Author: CK (CitizenKorea)", 0, 1, 'L')
     pdf.ln(10)
     
+    # [SNX 3D 공간 데이터 인쇄 로직]
     if file_type == 'SNX' and not df.empty:
         pdf.set_font("helvetica", 'B', 12)
         pdf.cell(190, 10, "[ 3D Spatial Metric Calibration Results ]", 0, 1, 'L')
         pdf.set_font("helvetica", '', 10)
         
-        # 임의 조작 수치 삭제 -> 파이썬이 연산한 실제 결과값만 출력
         if max_res is not None:
             pdf.cell(190, 8, f"Calculated Max Residual: {max_res:.6f} m", 0, 1, 'L')
         if r_sq is not None:
@@ -137,12 +137,40 @@ def create_integrity_report(df, file_type, r_sq=None, max_res=None):
         pdf.cell(50, 10, "K-Residual (m)", 1, 1, 'C')
         
         pdf.set_font("helvetica", '', 8)
-        for _, row in df.head(30).iterrows():
+        for _, row in df.head(40).iterrows():
             pdf.cell(40, 8, str(row['ID'])[:15], 1, 0, 'C')
             pdf.cell(40, 8, f"{row['Altitude']:.2f}", 1, 0, 'C')
             pdf.cell(50, 8, f"{row['SI_Dist']:.2f}", 1, 0, 'C')
             pdf.cell(50, 8, f"{row['Residual']:.6f}", 1, 1, 'C')
 
+    # [SP3/CLK 위성 시간 데이터 인쇄 로직]
+    elif file_type == 'SP3' and not df.empty:
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(190, 10, "[ Absolute Time Synchronization Results ]", 0, 1, 'L')
+        pdf.set_font("helvetica", '', 10)
+        
+        avg_residual = df['Temporal_Residual_us'].abs().mean()
+        pdf.cell(190, 8, f"Analyzed Satellites: {len(df)}", 0, 1, 'L')
+        pdf.cell(190, 8, f"Average Temporal Residual Extracted: {avg_residual:.6f} us", 0, 1, 'L')
+        
+        pdf.ln(5)
+        pdf.set_font("helvetica", 'B', 9)
+        pdf.cell(30, 10, "Satellite ID", 1, 0, 'C')
+        pdf.cell(50, 10, "Raw Clock Bias (us)", 1, 0, 'C')
+        pdf.cell(50, 10, "Calibrated Bias (us)", 1, 0, 'C')
+        pdf.cell(50, 10, "Temporal Residual (us)", 1, 1, 'C')
+        
+        pdf.set_font("helvetica", '', 8)
+        for _, row in df.head(40).iterrows():
+            pdf.cell(30, 8, str(row['Satellite_ID'])[:15], 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['Clock_Bias_Raw_us']:.6f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['Calibrated_Bias_us']:.6f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['Temporal_Residual_us']:.6f}", 1, 1, 'C')
+
+    pdf.ln(15)
+    pdf.set_font("helvetica", 'I', 9)
+    pdf.multi_cell(190, 6, "Notice: The calculation results are derived directly from the uploaded data files. We invite you to consider the physical essence of these metrics.")
+    
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
@@ -154,11 +182,14 @@ uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", 
 if uploaded_file:
     fname = uploaded_file.name.lower()
     df = pd.DataFrame()
+    file_type_flag = None
     r_sq = None
     max_res = None
     
     with st.spinner("Processing actual data..."):
+        # --- SNX Parser ---
         if ".snx" in fname:
+            file_type_flag = 'SNX'
             snx_data = {}
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             capture = False
@@ -199,8 +230,9 @@ if uploaded_file:
                 st.plotly_chart(fig, use_container_width=True)
                 st.dataframe(df[['ID', 'Altitude', 'SI_Dist', 'K_Dist', 'Residual']].style.format(precision=6), use_container_width=True)
 
+        # --- SP3/CLK Parser ---
         elif any(x in fname for x in ['.sp3', '.clk']):
-            # 가짜 성공 메시지 삭제. 업로드된 파일의 기초 데이터만 정직하게 파싱하여 보여줌.
+            file_type_flag = 'SP3'
             rows = []
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             for line in f:
@@ -211,16 +243,32 @@ if uploaded_file:
                     p = line.split()
                     if len(p) >= 10: rows.append([p[1], float(p[9])*1e6])
             
-            df = pd.DataFrame(rows, columns=['Satellite_ID', 'Clock_Bias_Raw'])
-            st.subheader("Raw Temporal Data Extraction")
-            st.write("Extracted data from file. Exact absolute synchronization requires cross-referencing with specific receiver altitude (S_loc). Applying global baseline (S_earth) as default:")
-            df['Calibrated_Bias'] = df['Clock_Bias_Raw'] / S_EARTH
-            st.dataframe(df.head(100), use_container_width=True)
+            df = pd.DataFrame(rows, columns=['Satellite_ID', 'Clock_Bias_Raw_us'])
+            
+            if not df.empty:
+                # K-PROTOCOL 보정 연산
+                df['Calibrated_Bias_us'] = df['Clock_Bias_Raw_us'] / S_EARTH
+                df['Temporal_Residual_us'] = df['Clock_Bias_Raw_us'] - df['Calibrated_Bias_us']
+                
+                st.subheader("Data Calculation Results (SP3/CLK)")
+                st.write("Extracting Temporal Residuals by applying K-PROTOCOL base metric (S_earth) to the Raw Clock Bias.")
+                
+                fig = px.bar(df.head(50), x='Satellite_ID', y='Temporal_Residual_us',
+                             title="Extracted Temporal Residuals per Satellite (μs)",
+                             labels={'Temporal_Residual_us': 'Temporal Residual (μs)', 'Satellite_ID': 'Satellite ID'},
+                             template="plotly_white",
+                             color_discrete_sequence=["#0056B3"])
+                
+                st.plotly_chart(fig, use_container_width=True)
+                st.dataframe(df.style.format(precision=6), use_container_width=True)
 
-    if not df.empty:
+    # ==========================================
+    # 8. Philosophical Popup & Export
+    # ==========================================
+    if not df.empty and file_type_flag:
         st.markdown(f"<div class='philosophical-quote'>\"{t['insight_msg']}\"</div>", unsafe_allow_html=True)
         
-        pdf_bytes = create_integrity_report(df, 'SNX' if '.snx' in fname else 'SP3', r_sq, max_res)
+        pdf_bytes = create_integrity_report(df, file_type_flag, r_sq, max_res)
         st.download_button(
             label="Download Analytical Report (PDF)",
             data=pdf_bytes,
@@ -230,7 +278,7 @@ if uploaded_file:
         )
 
 # ==========================================
-# 8. Footer
+# 9. Footer
 # ==========================================
 st.divider()
 c_foot1, c_foot2 = st.columns([2, 1])
