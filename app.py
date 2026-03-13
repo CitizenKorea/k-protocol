@@ -142,7 +142,6 @@ def create_integrity_report(df, file_type, file_name, data_epoch, r_sq=None, max
     pdf.cell(190, 10, "K-PROTOCOL Analytical Integrity Report", 0, 1, 'C')
     pdf.ln(5)
     
-    # [데이터 투명성] 파일명, 원본 데이터 관측 시간(Epoch), 리포트 발행 시간 명시
     pdf.set_font("helvetica", '', 10)
     pdf.cell(190, 8, f"Target Source File: {file_name}", 0, 1, 'L')
     pdf.cell(190, 8, f"Data Epoch (Observation Time): {data_epoch}", 0, 1, 'L')
@@ -190,7 +189,7 @@ if uploaded_file:
     fname = uploaded_file.name.lower()
     df = pd.DataFrame()
     file_type_flag = None; r_sq = None; max_res = None
-    data_epoch = "Time/Epoch data not explicitly found in header" # 기본값 설정
+    data_epoch = "Time/Epoch data not explicitly found in header"
     
     with st.spinner("Analyzing data integrity & Extracting Data Epoch..."):
         # --- SNX Parser ---
@@ -200,7 +199,6 @@ if uploaded_file:
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             capture = False
             for line in f:
-                # 파일 내 실제 관측 시간(Epoch) 파싱
                 if line.startswith('%=SNX'):
                     data_epoch = f"SNX Base Header [{line.strip()[:50]}]"
                 
@@ -221,13 +219,33 @@ if uploaded_file:
                     s_loc = (np.pi**2) / g_loc
                     rows.append([sid, R_SI, alt, g_loc, s_loc])
             df = pd.DataFrame(rows, columns=['ID', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc'])
+            
             if not df.empty:
                 df['K_Dist'] = df['SI_Dist'] / df['S_loc']; df['Residual'] = df['SI_Dist'] - df['K_Dist']
                 max_res = df['Residual'].abs().max()
                 corr, _ = pearsonr(df['Altitude'], df['Residual']); r_sq = (corr**2) * 100
                 st.subheader("Spatial Metric Calibration Results (SNX)")
-                st.plotly_chart(px.scatter(df, x='Altitude', y='Residual', hover_data=['ID'], trendline="ols", trendline_color_override="#0056B3", title=f"Actual Correlation | R² = {r_sq:.7f}%", template="plotly_white"), use_container_width=True)
-                st.divider(); st.markdown("#### Station-Specific Details")
+                
+                # 1. 고도 vs 잔차 산점도
+                st.plotly_chart(px.scatter(df, x='Altitude', y='Residual', hover_data=['ID'], trendline="ols", trendline_color_override="#0056B3", title=f"Actual Correlation (Altitude vs Residual) | R² = {r_sq:.7f}%", template="plotly_white"), use_container_width=True)
+                st.divider()
+
+                # 2. 관측소 고도 순서 기반 이중 선형 그래프 추가
+                st.markdown("#### Detailed Analysis: SI Standard vs K-PROTOCOL (Spatial Distance)")
+                df_sorted = df.sort_values(by='Altitude').reset_index(drop=True)
+                fig_snx_line = px.line(df_sorted, x='ID', y=['SI_Dist', 'K_Dist'], 
+                                       title="Spatial Distance Comparison across Stations (Sorted by Altitude)",
+                                       labels={'ID': 'Station ID (Sorted by Altitude)', 'value': 'Distance (m)', 'variable': 'Standard'},
+                                       template="plotly_white",
+                                       color_discrete_map={'SI_Dist': '#6C757D', 'K_Dist': '#E63946'},
+                                       hover_data={'Altitude': True})
+                newnames_snx = {'SI_Dist': 'SI Standard (Raw)', 'K_Dist': 'K-PROTOCOL (Calibrated)'}
+                fig_snx_line.for_each_trace(lambda t: t.update(name = newnames_snx[t.name], legendgroup = newnames_snx[t.name], hovertemplate = t.hovertemplate.replace(t.name, newnames_snx[t.name])))
+                fig_snx_line.update_traces(mode='lines+markers')
+                st.plotly_chart(fig_snx_line, use_container_width=True)
+
+                st.divider()
+                st.markdown("#### Station-Specific Details")
                 sel_station = st.selectbox("Select Station ID:", df['ID'].unique())
                 df_s = df[df['ID'] == sel_station].iloc[0]
                 c1m, c2m, c3m = st.columns(3)
@@ -239,17 +257,13 @@ if uploaded_file:
             file_type_flag = 'SP3'; rows = []
             f = gzip.open(uploaded_file, 'rt') if fname.endswith('.gz') else io.TextIOWrapper(uploaded_file)
             for line in f:
-                # SP3 파일 내 실제 관측 시간대(Epoch) 파싱
                 if "sp3" in fname and line.startswith('* ') and "not explicitly found" in data_epoch:
                     data_epoch = f"SP3 Start Epoch: {line[2:25].strip()}"
-                
-                # CLK 파일 내 실제 관측 시간대(Epoch) 파싱
                 if "clk" in fname and line.startswith('AS ') and "not explicitly found" in data_epoch:
                     p = line.split()
                     if len(p) >= 8:
                         data_epoch = f"CLK First Epoch: {p[2]}-{p[3]}-{p[4]} {p[5]}:{p[6]}:{p[7]}"
                 
-                # 시계 오차 데이터 파싱 및 결측치 차단
                 if "sp3" in fname and line.startswith('P'):
                     try:
                         s, b = line[1:4].strip(), float(line[46:60])
