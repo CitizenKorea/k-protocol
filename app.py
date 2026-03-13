@@ -223,16 +223,54 @@ if uploaded_file:
                 r_sq = (corr**2) * 100
                 
                 st.subheader("Data Calculation Results (SNX)")
+                
+                # 1. 전체 관측소 산점도 (고도 vs 잔차)
                 fig = px.scatter(df, x='Altitude', y='Residual', hover_data=['ID'], 
                                  trendline="ols", trendline_color_override="#0056B3",
                                  title=f"Actual Correlation | R² = {r_sq:.7f}%",
                                  template="plotly_white")
                 st.plotly_chart(fig, use_container_width=True)
                 
-                format_dict_snx = {'Altitude': '{:.6f}', 'g_loc': '{:.6f}', 'S_loc': '{:.6f}', 'SI_Dist': '{:.6f}', 'K_Dist': '{:.6f}', 'Residual': '{:.6f}'}
-                st.dataframe(df[['ID', 'Altitude', 'SI_Dist', 'K_Dist', 'Residual']].style.format(format_dict_snx), use_container_width=True)
+                st.divider()
+                
+                # 2. SNX 상세 분석: 개별 관측소 선택 및 정밀 척도 비교
+                st.markdown("#### Detailed Analysis: Station-Specific Calibration")
+                unique_stations = df['ID'].unique()
+                selected_station = st.selectbox("Select a Station ID to view exact metric calibration:", unique_stations)
+                
+                # 선택된 관측소 데이터 추출
+                df_station = df[df['ID'] == selected_station].iloc[0]
+                
+                # 관측소 메트릭 카드 출력
+                c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+                c_m1.metric("Altitude (m)", f"{df_station['Altitude']:,.2f}")
+                c_m2.metric("Local Gravity (g_loc)", f"{df_station['g_loc']:.6f}")
+                c_m3.metric("Metric Factor (S_loc)", f"{df_station['S_loc']:.7f}")
+                c_m4.metric("Extracted Residual (m)", f"{df_station['Residual']:,.2f}")
+                
+                # SI vs K-PROTOCOL 거리 비교 정밀 막대그래프
+                df_compare = pd.DataFrame({
+                    'Standard': ['SI Standard (Raw)', 'K-PROTOCOL (Calibrated)'],
+                    'Distance': [df_station['SI_Dist'], df_station['K_Dist']]
+                })
+                
+                fig_stat = px.bar(df_compare, x='Standard', y='Distance',
+                                  title=f"Spatial Distance Calibration for Station {selected_station} (m)",
+                                  text='Distance',
+                                  color='Standard',
+                                  color_discrete_map={'SI Standard (Raw)': '#6C757D', 'K-PROTOCOL (Calibrated)': '#E63946'})
+                fig_stat.update_traces(texttemplate='%{text:,.2f}', textposition='outside')
+                # 오차가 잘 보이도록 Y축 범위를 타이트하게 줌인
+                min_y = df_station['K_Dist'] - (df_station['Residual'] * 2)
+                max_y = df_station['SI_Dist'] + (df_station['Residual'] * 2)
+                fig_stat.update_layout(yaxis_range=[min_y, max_y], template="plotly_white")
+                
+                st.plotly_chart(fig_stat, use_container_width=True)
+                
+                # 에러 원천 차단: style.format 제거하고 st.dataframe만 사용
+                st.dataframe(df[['ID', 'Altitude', 'g_loc', 'S_loc', 'SI_Dist', 'K_Dist', 'Residual']], use_container_width=True)
 
-        # --- SP3/CLK Parser (결측치 필터링 완벽 적용) ---
+        # --- SP3/CLK Parser ---
         elif any(x in fname for x in ['.sp3', '.clk']):
             file_type_flag = 'SP3'
             rows = []
@@ -242,7 +280,7 @@ if uploaded_file:
                     try: 
                         sat_id = line[1:4].strip()
                         clock_bias = float(line[46:60])
-                        # 999999.999999 등 에러/결측치 데이터(Dummy Data) 원천 차단
+                        # 999999.999999 등 에러/결측치 데이터 차단
                         if abs(clock_bias) < 900000.0:
                             rows.append([sat_id, clock_bias])
                     except: pass
@@ -251,7 +289,7 @@ if uploaded_file:
                     if len(p) >= 10: 
                         sat_id = p[1]
                         clock_bias_us = float(p[9]) * 1e6
-                        # CLK 파일 결측치 원천 차단
+                        # 결측치 차단
                         if abs(clock_bias_us) < 900000.0:
                             rows.append([sat_id, clock_bias_us])
             
@@ -281,26 +319,24 @@ if uploaded_file:
                 unique_sats = df['Satellite_ID'].unique()
                 selected_sat = st.selectbox("Select a Satellite ID to view timeline comparison:", unique_sats)
                 
-                # 선택한 위성 데이터만 필터링
+                # 선택한 위성 데이터 필터링
                 df_sat = df[df['Satellite_ID'] == selected_sat].reset_index(drop=True)
                 
-                # 두 개의 선형 그래프 출력 (Raw vs Calibrated)
+                # 두 개의 선형 그래프 출력
                 fig_line = px.line(df_sat, y=['Clock_Bias_Raw_us', 'Calibrated_Bias_us'],
                                  title=f"Clock Bias Comparison for Satellite {selected_sat} (μs)",
                                  labels={'index': 'Data Points (Time)', 'value': 'Clock Bias (μs)', 'variable': 'Standard'},
                                  template="plotly_white",
                                  color_discrete_map={'Clock_Bias_Raw_us': '#6C757D', 'Calibrated_Bias_us': '#E63946'})
                 
-                # 범례 이름 깔끔하게 변경
                 newnames = {'Clock_Bias_Raw_us': 'SI Standard (Raw)', 'Calibrated_Bias_us': 'K-PROTOCOL (Calibrated)'}
                 fig_line.for_each_trace(lambda t: t.update(name = newnames[t.name], legendgroup = newnames[t.name], hovertemplate = t.hovertemplate.replace(t.name, newnames[t.name])))
                 fig_line.update_traces(mode='lines+markers')
                 
                 st.plotly_chart(fig_line, use_container_width=True)
                 
-                # 에러 방지 데이터 표 출력
-                format_dict_sp3 = {'Clock_Bias_Raw_us': '{:.6f}', 'Calibrated_Bias_us': '{:.6f}', 'Temporal_Residual_us': '{:.6f}'}
-                st.dataframe(df.style.format(format_dict_sp3), use_container_width=True)
+                # 에러 원천 차단: style.format 제거하고 st.dataframe만 사용
+                st.dataframe(df, use_container_width=True)
 
     # ==========================================
     # 8. Philosophical Popup & Export
