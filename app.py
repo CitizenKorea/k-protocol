@@ -50,7 +50,7 @@ def get_github_stats():
 real_stars, real_forks = get_github_stats()
 
 # ==========================================
-# 3. Language Dictionary
+# 3. Language Dictionary (한영 완벽 지원)
 # ==========================================
 if 'lang' not in st.session_state:
     st.session_state['lang'] = 'ENG'
@@ -141,7 +141,7 @@ st.markdown(f"""
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz"])
 
 # ==========================================
-# 5. PDF Generator
+# 5. PDF Generator (모든 데이터 완벽 포함)
 # ==========================================
 def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -215,7 +215,7 @@ else:
             content_lines = f.readlines()
 
 if content_lines:
-    with st.spinner("AI 3D Proximity Engine is running... Scanning 1,835 physical locations..."):
+    with st.spinner("AI 3D Proximity Engine is running... Scanning physical locations..."):
         try:
             if ".snx" in fname:
                 file_type_flag = 'SNX'
@@ -224,7 +224,7 @@ if content_lines:
                 capture_site = False
                 capture_est = False
                 
-                # [오류 해결] 지능형 추론을 삭제하고 100% 팩트 기반(split)으로 이름표 확보
+                # 100% 팩트 기반(split) 이름표 확보
                 for line in content_lines:
                     if line.startswith('%=SNX'): data_epoch = line[14:35].strip()
                     
@@ -294,7 +294,7 @@ if content_lines:
                             sloc = (np.pi**2)/(G_SI * ((R_EARTH/avg_r)**2))
                             k_diff = abs(r1/sloc - r2/sloc)
                             
-                            # 동일한 기술끼리의 비교는 제외하고 다른 기술 간의 오차만 극적으로 추출
+                            # 동일한 기술끼리의 비교는 제외하고 다른 기술 간의 오차만 추출
                             if s1[1] != s2[1]:
                                 rows_multi.append([f"{s1[0]} ({s1[1]}) & {s2[0]} ({s2[1]})", f"{s1[1]} vs {s2[1]}", r1, r2, si_diff, sloc, k_diff])
                 
@@ -303,19 +303,51 @@ if content_lines:
                 df_spatial = pd.DataFrame(rows_spatial, columns=['ID', 'Technique', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc', 'X', 'Y', 'Z'])
                 df_multi = pd.DataFrame(rows_multi[:100], columns=['Colocated Sites', 'Compare', 'R1 (SI)', 'R2 (SI)', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
 
+            # --- CASE 3: SP3/CLK 파일 ---
+            elif any(x in fname for x in ['.sp3', '.clk']):
+                file_type_flag = 'SP3'; rows = []
+                for line in content_lines:
+                    if "sp3" in fname and line.startswith('* '): data_epoch = f"SP3 Start Epoch: {line[2:25].strip()}"
+                    if "clk" in fname and line.startswith('AS '): 
+                        p = line.split()
+                        if len(p) >= 8 and data_epoch == "Unknown Epoch": data_epoch = f"CLK Epoch: {p[2]}-{p[3]}-{p[4]} {p[5]}:{p[6]}:{p[7]}"
+                    
+                    if "sp3" in fname and line.startswith('P'):
+                        try:
+                            s, b = line[1:4].strip(), float(line[46:60])
+                            if abs(b) < 900000.0: rows.append([s, b])
+                        except: pass
+                    elif "clk" in fname and line.startswith('AS'):
+                        p = line.split()
+                        if len(p) >= 10:
+                            s, b_us = p[1], float(p[9])*1e6
+                            if abs(b_us) < 900000.0: rows.append([s, b_us])
+                
+                df_temporal = pd.DataFrame(rows, columns=['Satellite_ID', 'Clock_Bias_Raw_us'])
+
         except Exception as e:
             st.error(f"Data parsing error: {e}")
 
     # ==========================================
     # 7. Dashboard Rendering
     # ==========================================
+    
+    # [CASE 1] 다중 기술 3D 교차 검증 (에러 완벽 해결)
     if not df_multi.empty:
         st.markdown('<div class="multi-box">', unsafe_allow_html=True)
         st.markdown(f"### {t['case1_title']}")
         st.markdown(t['case1_desc'])
-        st.dataframe(df_multi.style.format('{:.5f}'), use_container_width=True)
+        # 포맷팅 충돌 에러가 발생했던 부분을 완벽히 해결한 코드
+        st.dataframe(df_multi.style.format({
+            'R1 (SI)': '{:.5f}', 
+            'R2 (SI)': '{:.5f}', 
+            'SI_Diff (m)': '{:.5f}', 
+            'S_loc': '{:.7f}', 
+            'K_Diff (m)': '{:.6f}'
+        }), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # [CASE 2] 공간 왜곡 보정 분석
     if not df_spatial.empty:
         df_spatial['K_Dist'] = df_spatial['SI_Dist'] / df_spatial['S_loc']
         df_spatial['Residual'] = df_spatial['SI_Dist'] - df_spatial['K_Dist']
@@ -336,6 +368,21 @@ if content_lines:
         st.divider()
         st.markdown("#### Station-Specific Details")
         st.dataframe(df_spatial[['ID', 'Technique', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc', 'K_Dist', 'Residual']], use_container_width=True)
+
+    # [CASE 3] 시간 왜곡 보정 분석
+    if not df_temporal.empty:
+        df_temporal['Calibrated_Bias_us'] = df_temporal['Clock_Bias_Raw_us'] / S_EARTH
+        df_temporal['Temporal_Residual_us'] = df_temporal['Clock_Bias_Raw_us'] - df_temporal['Calibrated_Bias_us']
+        
+        st.markdown('<div class="explain-box">', unsafe_allow_html=True)
+        st.markdown(f"### {t['case3_title']}")
+        st.markdown(t['case3_desc'])
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        df_m = df_temporal.groupby('Satellite_ID', as_index=False)['Temporal_Residual_us'].mean()
+        st.plotly_chart(px.bar(df_m, x='Satellite_ID', y='Temporal_Residual_us', title="Average Temporal Residuals (μs)", template="plotly_white", color_discrete_sequence=['#1D3557']), use_container_width=True)
+        st.divider()
+        st.dataframe(df_temporal, use_container_width=True)
 
     # ==========================================
     # 8. PDF Export
