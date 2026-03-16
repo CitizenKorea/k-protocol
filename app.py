@@ -114,6 +114,8 @@ with c2:
 with c3:
     st.markdown("**🔗 Detailed Theoretical Evidence & References**")
     st.markdown("<div class='link-box'>📄 <a href='https://doi.org/10.5281/zenodo.18976813' target='_blank'>Full Theoretical Background (Zenodo)</a></div>", unsafe_allow_html=True)
+    st.markdown("<div class='link-box'>📡 <a href='http://garner.ucsd.edu/pub/products/2392/' target='_blank'>Raw Data Directory (Single Tech)</a></div>", unsafe_allow_html=True)
+    st.markdown("<div class='link-box'>🔭 <a href='http://garner.ucsd.edu/pub/combinationsR20/' target='_blank'>Multi-Technique ITRF Directory</a></div>", unsafe_allow_html=True)
 
 st.divider()
 
@@ -165,6 +167,7 @@ def create_integrity_report(df, file_type, file_name, data_epoch, r_sq=None, max
 # ==========================================
 # 7. Dynamic Analysis Engine
 # ==========================================
+st.markdown("💡 **Tip for Large Files:** 200MB 이상의 원본 `.snx` 파일을 업로드하려면 터미널에서 `streamlit run app.py --server.maxUploadSize 1024` 명령어로 실행하세요.")
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "z"])
 
 if uploaded_file:
