@@ -150,9 +150,9 @@ st.markdown(f"""
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz"])
 
 # ==========================================
-# 6. PDF Report Generator
+# 6. PDF Report Generator (레이저/기술 완벽 탑재 버전)
 # ==========================================
-def create_integrity_report(df, file_type, file_name, data_epoch, r_sq=None, max_res=None):
+def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("helvetica", 'B', 16)
@@ -164,30 +164,68 @@ def create_integrity_report(df, file_type, file_name, data_epoch, r_sq=None, max
     pdf.cell(190, 8, f"Data Epoch: {data_epoch}", 0, 1, 'L')
     pdf.cell(190, 8, f"Report Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
     pdf.cell(190, 8, f"Algorithm: K-PROTOCOL (Patent Pending)", 0, 1, 'L')
-    pdf.ln(8)
+    pdf.ln(5)
     
-    if file_type == 'SNX' and not df.empty:
-        pdf.set_font("helvetica", 'B', 12)
-        pdf.cell(190, 10, "[ 3D Spatial Metric Calibration Results ]", 0, 1, 'L')
-        pdf.set_font("helvetica", '', 10)
-        if max_res is not None: pdf.cell(190, 8, f"Calculated Max Residual: {max_res:.6f} m", 0, 1, 'L')
-        if r_sq is not None: pdf.cell(190, 8, f"Calculated Correlation (R-squared): {r_sq:.7f}%", 0, 1, 'L')
-        pdf.ln(5); pdf.set_font("helvetica", 'B', 9)
-        pdf.cell(40, 10, "Station ID", 1, 0, 'C'); pdf.cell(40, 10, "Altitude (m)", 1, 0, 'C'); pdf.cell(50, 10, "SI Distance (m)", 1, 0, 'C'); pdf.cell(50, 10, "K-Residual (m)", 1, 1, 'C')
-        pdf.set_font("helvetica", '', 8)
-        for _, row in df.head(40).iterrows():
-            pdf.cell(40, 8, str(row['ID'])[:15], 1, 0, 'C'); pdf.cell(40, 8, f"{row['Altitude']:.2f}", 1, 0, 'C'); pdf.cell(50, 8, f"{row['SI_Dist']:.2f}", 1, 0, 'C'); pdf.cell(50, 8, f"{row['Residual']:.6f}", 1, 1, 'C')
+    if file_type == 'SNX':
+        # [CASE 1] 다중 기술 비교 (SLR vs VLBI) 리포트 출력
+        if not df_multi.empty:
+            pdf.set_font("helvetica", 'B', 12)
+            pdf.cell(190, 10, "[ Multi-Technique Discrepancy (SLR vs VLBI) ]", 0, 1, 'L')
+            pdf.set_font("helvetica", 'B', 9)
+            pdf.cell(60, 8, "Colocated Sites", 1, 0, 'C')
+            pdf.cell(40, 8, "R1 (SI) [m]", 1, 0, 'C')
+            pdf.cell(40, 8, "R2 (SI) [m]", 1, 0, 'C')
+            pdf.cell(50, 8, "K_Diff [m]", 1, 1, 'C')
+            
+            pdf.set_font("helvetica", '', 8)
+            for _, row in df_multi.head(30).iterrows():
+                pdf.cell(60, 8, str(row['Colocated Sites'])[:25], 1, 0, 'C')
+                pdf.cell(40, 8, f"{row['R1 (SI)']:.4f}", 1, 0, 'C')
+                pdf.cell(40, 8, f"{row['R2 (SI)']:.4f}", 1, 0, 'C')
+                pdf.cell(50, 8, f"{row['K_Diff (m)']:.6f}", 1, 1, 'C')
+            pdf.ln(8)
+            
+        # [CASE 2] 공간 왜곡 보정 분석 리포트 출력 (Technique 항목 추가)
+        if not df_spatial.empty:
+            pdf.set_font("helvetica", 'B', 12)
+            pdf.cell(190, 10, "[ 3D Spatial Metric Calibration Results ]", 0, 1, 'L')
+            pdf.set_font("helvetica", '', 10)
+            if max_res is not None: pdf.cell(190, 8, f"Calculated Max Residual: {max_res:.6f} m", 0, 1, 'L')
+            if r_sq is not None: pdf.cell(190, 8, f"Calculated Correlation (R-squared): {r_sq:.7f}%", 0, 1, 'L')
+            pdf.ln(5)
+            
+            pdf.set_font("helvetica", 'B', 9)
+            pdf.cell(30, 10, "Station ID", 1, 0, 'C')
+            pdf.cell(20, 10, "Tech", 1, 0, 'C')
+            pdf.cell(40, 10, "Altitude (m)", 1, 0, 'C')
+            pdf.cell(50, 10, "SI Distance (m)", 1, 0, 'C')
+            pdf.cell(50, 10, "K-Residual (m)", 1, 1, 'C')
+            
+            pdf.set_font("helvetica", '', 8)
+            for _, row in df_spatial.head(40).iterrows():
+                pdf.cell(30, 8, str(row['ID'])[:15], 1, 0, 'C')
+                pdf.cell(20, 8, str(row['Technique']), 1, 0, 'C')
+                pdf.cell(40, 8, f"{row['Altitude']:.2f}", 1, 0, 'C')
+                pdf.cell(50, 8, f"{row['SI_Dist']:.2f}", 1, 0, 'C')
+                pdf.cell(50, 8, f"{row['Residual']:.6f}", 1, 1, 'C')
 
-    elif file_type == 'SP3' and not df.empty:
+    elif file_type == 'SP3' and not df_temporal.empty:
+        # [CASE 3] 시간 오차 분석 리포트 출력
         pdf.set_font("helvetica", 'B', 12)
         pdf.cell(190, 10, "[ Absolute Time Synchronization Results ]", 0, 1, 'L')
         pdf.set_font("helvetica", '', 10)
-        pdf.cell(190, 8, f"Analyzed Satellites: {len(df['Satellite_ID'].unique())}", 0, 1, 'L')
+        pdf.cell(190, 8, f"Analyzed Satellites: {len(df_temporal['Satellite_ID'].unique())}", 0, 1, 'L')
         pdf.ln(5); pdf.set_font("helvetica", 'B', 9)
-        pdf.cell(30, 10, "Satellite ID", 1, 0, 'C'); pdf.cell(50, 10, "Raw Bias (us)", 1, 0, 'C'); pdf.cell(50, 10, "Calibrated Bias (us)", 1, 0, 'C'); pdf.cell(50, 10, "Temporal Residual", 1, 1, 'C')
+        pdf.cell(30, 10, "Satellite ID", 1, 0, 'C')
+        pdf.cell(50, 10, "Raw Bias (us)", 1, 0, 'C')
+        pdf.cell(50, 10, "Calibrated Bias (us)", 1, 0, 'C')
+        pdf.cell(50, 10, "Temporal Residual", 1, 1, 'C')
         pdf.set_font("helvetica", '', 8)
-        for _, row in df.head(40).iterrows():
-            pdf.cell(30, 8, str(row['Satellite_ID'])[:15], 1, 0, 'C'); pdf.cell(50, 8, f"{row['Clock_Bias_Raw_us']:.6f}", 1, 0, 'C'); pdf.cell(50, 8, f"{row['Calibrated_Bias_us']:.6f}", 1, 0, 'C'); pdf.cell(50, 8, f"{row['Temporal_Residual_us']:.6f}", 1, 1, 'C')
+        for _, row in df_temporal.head(40).iterrows():
+            pdf.cell(30, 8, str(row['Satellite_ID'])[:15], 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['Clock_Bias_Raw_us']:.6f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['Calibrated_Bias_us']:.6f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['Temporal_Residual_us']:.6f}", 1, 1, 'C')
 
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
@@ -389,13 +427,12 @@ if content_lines:
         st.dataframe(df_temporal, use_container_width=True)
 
     # ==========================================
-    # 9. PDF Export
+    # 9. PDF Export (모든 데이터 포함 버전)
     # ==========================================
     if file_type_flag:
         st.info("💡 " + ("이 수치들은 K-PROTOCOL 알고리즘이 원시 데이터에서 직접 도출한 수학적 팩트입니다." if st.session_state['lang'] == 'KOR' else "These figures are mathematical facts derived directly from raw data by the K-PROTOCOL algorithm."))
-        pdf_data = df_spatial if file_type_flag == 'SNX' else df_temporal
         st.download_button(label=t['download_btn'], 
-                           data=create_integrity_report(pdf_data, file_type_flag, fname, data_epoch, r_sq, max_res), 
+                           data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
                            file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
                            mime="application/pdf", type="primary")
 
