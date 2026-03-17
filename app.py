@@ -14,7 +14,7 @@ import datetime
 # 1. K-PROTOCOL Universal Constants
 # ==========================================
 G_SI = 9.80665
-S_EARTH = (np.pi**2) / G_SI 
+S_EARTH = (np.pi**2) / G_SI
 C_SI = 299792458
 C_K = C_SI / S_EARTH
 R_EARTH = 6371000
@@ -34,6 +34,9 @@ st.markdown("""
     .explain-box { background-color: #FFFFFF; padding: 25px; border-left: 5px solid #495057; border-radius: 5px; margin-bottom: 25px; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .source-box { background-color: #D1ECF1; color: #0C5460; padding: 25px; border-left: 5px solid #17A2B8; border-radius: 5px; margin-bottom: 30px; }
     hr { border-color: #DEE2E6; }
+    .link-list { line-height: 1.8; font-size: 15px; }
+    .link-list a { text-decoration: none; font-weight: 600; color: #0056B3; }
+    .link-list a:hover { text-decoration: underline; color: #E63946; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -70,14 +73,15 @@ i18n = {
         'src_box_1': "<b>원천 데이터 출처:</b> 프랑스 국립지리원(IGN) ITRF2020 공식 서버 통합 솔루션 원본",
         'src_box_2': "<b>무손실 추출 방식:</b> 관측소 식별 코드와 순수 3D 관측 좌표(STAX, STAY, STAZ)를 100% 원본 그대로 추출하였습니다.",
         'src_box_3': "아래 수치들은 K-PROTOCOL 방정식이 진리임을 증명하는 수학적 팩트입니다.",
-        'upload_prompt': "다른 연도의 데이터를 직접 분석하고 싶다면 업로드하십시오. (SNX, SP3, CLK 지원)",
+        'upload_prompt': "다른 연도의 데이터를 직접 분석하고 싶다면 업로드하십시오. (SNX, SP3, CLK, FR2 지원)",
         'case1_title': "🔭 [CASE 1] 다중 기술 척도 불일치 교차 검증 (SLR vs VLBI vs GNSS)",
         'case1_desc': "**분석 원리:** 본 엔진은 ITRF 원본의 관측소 이름표(L, R, P)를 정확히 인식한 뒤, 1,835개 관측소의 3D 물리적 좌표를 추적하여 30km 반경 내에 겹쳐있는 기기들을 강제 매칭시킵니다. 동일한 부지에서 측정된 명백한 거리 오차(SI_Diff)가 K-PROTOCOL($S_{loc}$)을 통해 완벽히 상쇄(K_Diff)되는 것을 증명합니다.",
         'case2_title': "🌐 [CASE 2] 전 지구적 공간 왜곡 보정 분석 (Spatial Calibration)",
         'case2_desc': "**분석 원리:** 전 세계 관측소를 고도에 따라 정렬하고 공간 왜곡량(Residual)을 역추적합니다. 99.9%에 달하는 극단적 상관계수($R^2$)는 이 방정식의 완벽성을 증명합니다.",
         'case3_title': "⏱️ [CASE 3] 절대 시간 동기화 분석 (Temporal Synchronization)",
         'case3_desc': "**분석 원리:** 궤도 상의 시계 오차(SP3/CLK)를 K-PROTOCOL의 절대 척도로 동기화합니다.",
-        'download_btn': "📄 K-PROTOCOL 분석 무결성 리포트 다운로드 (PDF)"
+        'download_btn': "📄 K-PROTOCOL 분석 무결성 리포트 다운로드 (PDF)",
+        'ref_title': "🔗 공인 데이터 출처 및 레퍼런스 링크"
     },
     'ENG': {
         'title': "K-PROTOCOL Omni Analysis Center",
@@ -92,14 +96,15 @@ i18n = {
         'src_box_1': "<b>Raw Data Source:</b> ITRF2020 Multi-Technique Combined Solution",
         'src_box_2': "<b>Lossless Extraction:</b> Pure 3D coordinates were extracted 100% as-is.",
         'src_box_3': "These figures are mathematical facts proving the K-PROTOCOL equation.",
-        'upload_prompt': "Upload SNX, SP3, or CLK files to analyze other datasets.",
+        'upload_prompt': "Upload SNX, SP3, CLK, or FR2 files to analyze other datasets.",
         'case1_title': "🔭 [CASE 1] Multi-Technique Discrepancy (3D Proximity Match)",
         'case1_desc': "**Analytical Principle:** This engine identifies the true technique labels (L, R, P) and physically matches stations within a 30km radius using 3D coordinates. It proves that the obvious error between colocated instruments (SI_Diff) is mathematically cancelled out by K-PROTOCOL ($S_{loc}$).",
         'case2_title': "🌐 [CASE 2] Global Spatial Metric Calibration",
         'case2_desc': "**Analytical Principle:** Traces spatial distortion across thousands of global stations. The extreme $R^2$ correlation is absolute proof of the theory.",
         'case3_title': "⏱️ [CASE 3] Absolute Temporal Synchronization",
         'case3_desc': "**Analytical Principle:** Synchronizes atomic clock data using the absolute metric $S_{earth}$.",
-        'download_btn': "📄 Download Analytical Integrity Report (PDF)"
+        'download_btn': "📄 Download Analytical Integrity Report (PDF)",
+        'ref_title': "🔗 Verified Reference & Raw Data Sources"
     }
 }
 
@@ -122,12 +127,21 @@ st.divider()
 with st.expander(t['bg_title'], expanded=True):
     st.info(t['bg_text'])
 
-c1, c2, c3 = st.columns([1, 1, 2])
-with c1: st.markdown(f'<div class="metric-box"><div class="metric-title">GITHUB STARS</div><div class="metric-value">{real_stars}</div></div>', unsafe_allow_html=True)
-with c2: st.markdown(f'<div class="metric-box"><div class="metric-title">GITHUB FORKS</div><div class="metric-value">{real_forks}</div></div>', unsafe_allow_html=True)
+# GitHub Stats & Reference Links
+c1, c2, c3 = st.columns([1, 1, 2.5])
+with c1: 
+    st.markdown(f'<div class="metric-box"><div class="metric-title">GITHUB STARS</div><div class="metric-value">{real_stars}</div></div>', unsafe_allow_html=True)
+with c2: 
+    st.markdown(f'<div class="metric-box"><div class="metric-title">GITHUB FORKS</div><div class="metric-value">{real_forks}</div></div>', unsafe_allow_html=True)
 with c3:
-    st.markdown("**🔗 Verified Reference & Raw Data Sources**")
-    st.markdown("📄 [Full Theoretical Background (Zenodo)](https://doi.org/10.5281/zenodo.18976813)")
+    st.markdown(f"**{t['ref_title']}**")
+    st.markdown("""
+    <div class="link-list">
+        📄 <a href="https://doi.org/10.5281/zenodo.18976813" target="_blank">Full Theoretical Background (Zenodo)</a><br>
+        🛰️ <a href="http://garner.ucsd.edu/pub/products/2392/" target="_blank">SOPAC GNSS Products (Garner)</a><br>
+        🌕 <a href="https://cddis.nasa.gov/archive/slr/data/fr_crd_v2/apollo15/2025/" target="_blank">NASA CDDIS LLR Data (Apollo 15, 2025)</a>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.divider()
 st.markdown(f"### {t['src_title']}")
@@ -138,7 +152,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz"])
+uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2"])
 
 # ==========================================
 # 5. PDF Generator (모든 데이터 완벽 포함)
@@ -305,12 +319,15 @@ if content_lines:
 
             # --- CASE 3: SP3/CLK 파일 ---
             elif any(x in fname for x in ['.sp3', '.clk']):
-                file_type_flag = 'SP3'; rows = []
+                file_type_flag = 'SP3'
+                rows = []
                 for line in content_lines:
-                    if "sp3" in fname and line.startswith('* '): data_epoch = f"SP3 Start Epoch: {line[2:25].strip()}"
+                    if "sp3" in fname and line.startswith('* '): 
+                        data_epoch = f"SP3 Start Epoch: {line[2:25].strip()}"
                     if "clk" in fname and line.startswith('AS '): 
                         p = line.split()
-                        if len(p) >= 8 and data_epoch == "Unknown Epoch": data_epoch = f"CLK Epoch: {p[2]}-{p[3]}-{p[4]} {p[5]}:{p[6]}:{p[7]}"
+                        if len(p) >= 8 and data_epoch == "Unknown Epoch": 
+                            data_epoch = f"CLK Epoch: {p[2]}-{p[3]}-{p[4]} {p[5]}:{p[6]}:{p[7]}"
                     
                     if "sp3" in fname and line.startswith('P'):
                         try:
@@ -364,7 +381,7 @@ if content_lines:
         c1m.metric("Total Analyzed Stations", f"{len(df_spatial)}")
         c2m.metric("Spatial Calibration (R²)", f"{r_sq:.7f} %")
         
-        st.plotly_chart(px.scatter(df_spatial, x='Altitude', y='Residual', hover_data=['ID', 'Technique'], trendline="ols", trendline_color_override="#E63946", title=f"Altitude vs Calibration Residual", template="plotly_white"), use_container_width=True)
+        st.plotly_chart(px.scatter(df_spatial, x='Altitude', y='Residual', hover_data=['ID', 'Technique'], trendline="ols", trendline_color_override="#E63946", title="Altitude vs Calibration Residual", template="plotly_white"), use_container_width=True)
         st.divider()
         st.markdown("#### Station-Specific Details")
         st.dataframe(df_spatial[['ID', 'Technique', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc', 'K_Dist', 'Residual']], use_container_width=True)
