@@ -79,6 +79,14 @@ i18n = {
         'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 SNX.gz, SP3.gz, CLK.gz 지원)",
         'case1_title': "🔭 [CASE 1] 다중 기술 척도 불일치 교차 검증 (SLR vs VLBI vs GNSS)",
         'case1_desc': "**분석 원리:** 본 엔진은 ITRF 원본의 관측소 이름표를 정확히 인식한 뒤, 30km 반경 내에 겹쳐있는 기기들을 강제 매칭시킵니다. 기기 간의 물리적 거리(SI_Diff) 속에 숨어있던 **'기하학적 공간 왜곡(거품)'**을 K-PROTOCOL(S_loc)이 얼마나 정확히 찾아내어 깎아내는지(Calibration) 시각적으로 증명합니다.",
+        'case1_guide': """
+        <div class="glossary-card">
+            <b>💡 분석 가이드:</b> 동일한 부지 내에 설치된 서로 다른 두 장비(예: SLR과 GNSS) 사이의 거리를 분석합니다.<br>
+            • <b>SI_Diff (m)</b>: 두 장비 간의 <b>실제 물리적 이격 거리</b>입니다. (아무리 공식을 써도 기기 간의 실제 거리가 0이 될 수는 없습니다.)<br>
+            • <b>S_loc</b>: K-PROTOCOL이 밝혀낸 해당 고도/지역의 국소 공간 왜곡 지수입니다.<br>
+            • <b>추출된 왜곡량 (Correction)</b>: 기존 미터법이 과대평가하고 있던 시공간의 <b>'기하학적 거품'</b>입니다. K-PROTOCOL은 이 수치만큼의 환영을 정확히 찾아내어 깎아냈습니다(Calibration).
+        </div>
+        """,
         'case2_title': "🌐 [CASE 2] 전 지구적 공간 왜곡 보정 분석 (Spatial Calibration)",
         'case2_desc': "**분석 원리:** 전 세계 관측소를 고도에 따라 정렬하고 공간 왜곡량(Residual)을 역추적합니다. 99.9%에 달하는 극단적 상관계수(R²)는 이 방정식의 완벽성을 증명합니다.",
         'defense_text': "💡 **과학적 주석:** 이 99.99%의 상관관계는 단순한 수식적 순환 참조가 아닙니다. 물리적 고도(Altitude)와 기하학적 잔차(Residual)라는 독립적인 두 변수가 국소 중력 환경에 따라 완벽하게 동기화되어 움직인다는 '물리적 실체'를 교차 검증한 결과입니다.",
@@ -103,6 +111,14 @@ i18n = {
         'upload_prompt': "Upload your own files to analyze directly. (Supports NASA SNX.gz, SP3.gz, CLK.gz)",
         'case1_title': "🔭 [CASE 1] Multi-Technique Discrepancy (3D Proximity Match)",
         'case1_desc': "**Analytical Principle:** This engine identifies colocated instruments within a 30km radius. It visually proves exactly how much **'hidden geometric distortion'** K-PROTOCOL (S_loc) extracts and calibrates from the observed physical distance (SI_Diff) between instruments.",
+        'case1_guide': """
+        <div class="glossary-card">
+            <b>💡 Analysis Guide:</b> Analyzes the distance between two different instruments (e.g., SLR and GNSS) installed on the same site.<br>
+            • <b>SI_Diff (m)</b>: The <b>actual physical separation distance</b> between the two instruments. (No formula can make the actual physical distance between instruments zero.)<br>
+            • <b>S_loc</b>: The local spatial distortion index of the corresponding altitude/region revealed by K-PROTOCOL.<br>
+            • <b>Extracted Error (Correction)</b>: The <b>'geometric bubble'</b> of spacetime that the existing metric system was overestimating. K-PROTOCOL exactly identifies and calibrates out this illusion.
+        </div>
+        """,
         'case2_title': "🌐 [CASE 2] Global Spatial Metric Calibration",
         'case2_desc': "**Analytical Principle:** Traces spatial distortion across thousands of global stations. The extreme R² correlation is absolute proof of the theory.",
         'defense_text': "💡 **Scientific Note:** This 99.99% correlation is not a mathematical tautology. It demonstrates that the spatial residual (error) precisely scales with the physical altitude and local gravity of each independent station, verifying the geometric metric transformation.",
@@ -160,7 +176,7 @@ st.markdown(f"""
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2"])
 
 # ==========================================
-# 5. PDF Generator (SNX 및 CLK/SP3 시간 데이터 완벽 지원)
+# 5. PDF Generator
 # ==========================================
 def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -214,7 +230,7 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
             pdf.cell(50, 8, f"{row.get('Residual', 0):.6f}", 1, 1, 'C')
         pdf.ln(8)
 
-    # [2] SP3/CLK 시간 데이터 출력 (버그 수정됨!)
+    # [2] SP3/CLK 시간 데이터 출력
     if not df_temporal.empty:
         pdf.set_font("helvetica", 'B', 12)
         pdf.cell(190, 10, "[ Absolute Temporal Synchronization Results ]", 0, 1, 'L')
@@ -399,14 +415,8 @@ if not df_multi.empty:
     fig.update_layout(xaxis_tickangle=-45)
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("""
-    <div class="glossary-card">
-        <b>💡 분석 가이드:</b> 동일한 부지 내에 설치된 서로 다른 두 장비(예: SLR과 GNSS) 사이의 거리를 분석합니다.<br>
-        • <b>SI_Diff (m)</b>: 두 장비 간의 <b>실제 물리적 이격 거리</b>입니다. (아무리 공식을 써도 기기 간의 실제 거리가 0이 될 수는 없습니다.)<br>
-        • <b>S_loc</b>: K-PROTOCOL이 밝혀낸 해당 고도/지역의 국소 공간 왜곡 지수입니다.<br>
-        • <b>추출된 왜곡량 (Correction)</b>: 기존 미터법이 과대평가하고 있던 시공간의 <b>'기하학적 거품'</b>입니다. K-PROTOCOL은 이 수치만큼의 환영을 정확히 찾아내어 깎아냈습니다(Calibration).
-    </div>
-    """, unsafe_allow_html=True)
+    # 💡 ENG/KOR 버튼과 연동된 분석 가이드 노출
+    st.markdown(t['case1_guide'], unsafe_allow_html=True)
     
     st.dataframe(df_multi[['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)', 'Correction (m)']].style.format({
         'SI_Diff (m)': '{:.5f}', 
