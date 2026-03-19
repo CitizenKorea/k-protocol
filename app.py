@@ -215,7 +215,7 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
 # ==========================================
-# 6. Core Parsing & 3D Proximity Engine 
+# 6. Core Parsing Engine (압축 해제 로직 완벽 복원)
 # ==========================================
 content_lines = []
 fname = ""
@@ -225,13 +225,18 @@ r_sq, max_res = None, None
 
 if uploaded_file is not None:
     fname = uploaded_file.name.lower()
-    content_lines = uploaded_file.read().decode('utf-8', errors='ignore').splitlines()
+    # 압축 파일(.gz)인 경우 안전하게 해제 후 읽기
+    if fname.endswith('.gz'):
+        with gzip.open(uploaded_file, 'rt', encoding='utf-8', errors='ignore') as f:
+            content_lines = f.read().splitlines()
+    else:
+        content_lines = uploaded_file.read().decode('utf-8', errors='ignore').splitlines()
 else:
     default_path = "K_PROTOCOL_EVIDENCE.snx"
     if os.path.exists(default_path):
         fname = "k_protocol_evidence.snx"
         with open(default_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content_lines = f.readlines()
+            content_lines = f.read().splitlines()
 
 if content_lines:
     with st.spinner("AI 엔진이 물리적 위치와 시공간 좌표를 추적 중입니다..."):
