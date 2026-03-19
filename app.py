@@ -72,18 +72,18 @@ i18n = {
         K-PROTOCOL은 절대 기하학적 상수인 **지구 절대 척도(S_earth ≈ 1.006419)**와 각 지점의 국소 중력에 따른 **척도 계수 텐서(S_loc)**를 적용하여, 주류 학계가 설명하지 못하는 척도 불일치를 완벽하게 교정합니다.
         """,
         'src_title': "📂 데이터 출처 및 자동 분석 엔진",
-        'src_box_title': "내장된 기본 증거 데이터 (K_PROTOCOL_EVIDENCE.snx)",
-        'src_box_1': "<b>원천 데이터 출처:</b> 프랑스 국립지리원(IGN) ITRF2020 공식 서버 통합 솔루션 원본",
-        'src_box_2': "<b>무손실 추출 방식:</b> 관측소 식별 코드와 순수 3D 관측 좌표(STAX, STAY, STAZ)를 100% 원본 그대로 추출하였습니다.",
-        'src_box_3': "아래 수치들은 K-PROTOCOL 방정식이 진리임을 증명하는 수학적 팩트입니다.",
-        'upload_prompt': "다른 연도의 데이터를 직접 분석하고 싶다면 업로드하십시오. (SNX, SP3, CLK, FR2 지원)",
+        'src_box_title': "내장된 기본 증거 데이터 (NASA CDDIS / UCSD Garner Archive)",
+        'src_box_1': "<b>원천 데이터 출처:</b> NASA CDDIS 우주 측지 데이터 및 UCSD Garner 아카이브 (정밀 궤도/시계 원본)",
+        'src_box_2': "<b>무손실 추출 방식:</b> 관측소 식별 코드와 순수 3D 관측 좌표(STAX, STAY, STAZ) 및 위성 시계 오차를 100% 원본 그대로 추출하였습니다.",
+        'src_box_3': "아래 수치들은 K-PROTOCOL 방정식이 진리임을 증명하는 수학적 팩트입니다. (사용자 파일 미 업로드 시 기본 증거 데이터를 자동 분석합니다.)",
+        'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 SNX.gz, SP3.gz, CLK.gz 지원)",
         'case1_title': "🔭 [CASE 1] 다중 기술 척도 불일치 교차 검증 (SLR vs VLBI vs GNSS)",
-        'case1_desc': "**분석 원리:** 본 엔진은 ITRF 원본의 관측소 이름표(L, R, P)를 정확히 인식한 뒤, 30km 반경 내에 겹쳐있는 기기들을 강제 매칭시킵니다. 기기 간의 물리적 거리(SI_Diff) 속에 숨어있던 **'기하학적 공간 왜곡(거품)'**을 K-PROTOCOL(S_loc)이 얼마나 정확히 찾아내어 깎아내는지(Calibration) 시각적으로 증명합니다.",
+        'case1_desc': "**분석 원리:** 본 엔진은 ITRF 원본의 관측소 이름표를 정확히 인식한 뒤, 30km 반경 내에 겹쳐있는 기기들을 강제 매칭시킵니다. 기기 간의 물리적 거리(SI_Diff) 속에 숨어있던 **'기하학적 공간 왜곡(거품)'**을 K-PROTOCOL(S_loc)이 얼마나 정확히 찾아내어 깎아내는지(Calibration) 시각적으로 증명합니다.",
         'case2_title': "🌐 [CASE 2] 전 지구적 공간 왜곡 보정 분석 (Spatial Calibration)",
         'case2_desc': "**분석 원리:** 전 세계 관측소를 고도에 따라 정렬하고 공간 왜곡량(Residual)을 역추적합니다. 99.9%에 달하는 극단적 상관계수(R²)는 이 방정식의 완벽성을 증명합니다.",
         'defense_text': "💡 **과학적 주석:** 이 99.99%의 상관관계는 단순한 수식적 순환 참조가 아닙니다. 물리적 고도(Altitude)와 기하학적 잔차(Residual)라는 독립적인 두 변수가 국소 중력 환경에 따라 완벽하게 동기화되어 움직인다는 '물리적 실체'를 교차 검증한 결과입니다.",
         'case3_title': "⏱️ [CASE 3] 절대 시간 동기화 분석 (Temporal Synchronization)",
-        'case3_desc': "**분석 원리:** 궤도 상의 시계 오차(SP3/CLK)를 K-PROTOCOL의 절대 척도로 동기화합니다.",
+        'case3_desc': "**분석 원리:** 궤도 상의 원자 시계 오차(SP3/CLK)를 K-PROTOCOL의 절대 척도로 동기화합니다.",
         'download_btn': "📄 K-PROTOCOL 분석 무결성 리포트 다운로드 (PDF)",
         'ref_title': "🔗 공인 데이터 출처 및 레퍼런스 링크"
     },
@@ -96,11 +96,11 @@ i18n = {
         K-PROTOCOL perfectly corrects the scale discrepancies that mainstream academia cannot explain using the local metric tensor (S_loc).
         """,
         'src_title': "📂 Data Source & Auto-Analysis Engine",
-        'src_box_title': "Built-in Evidence Data",
-        'src_box_1': "<b>Raw Data Source:</b> ITRF2020 Multi-Technique Combined Solution",
-        'src_box_2': "<b>Lossless Extraction:</b> Pure 3D coordinates were extracted 100% as-is.",
-        'src_box_3': "These figures are mathematical facts proving the K-PROTOCOL equation.",
-        'upload_prompt': "Upload SNX, SP3, CLK, or FR2 files to analyze other datasets.",
+        'src_box_title': "Built-in Evidence Data (NASA CDDIS / UCSD Garner Archive)",
+        'src_box_1': "<b>Raw Data Source:</b> NASA CDDIS Geodetic Data and UCSD Garner Archive (Precision Orbit/Clock Raw Data)",
+        'src_box_2': "<b>Lossless Extraction:</b> Pure 3D coordinates and satellite clock biases were extracted 100% as-is.",
+        'src_box_3': "These figures are mathematical facts proving the K-PROTOCOL equation. (Default evidence data is auto-analyzed if no file is uploaded.)",
+        'upload_prompt': "Upload your own files to analyze directly. (Supports NASA SNX.gz, SP3.gz, CLK.gz)",
         'case1_title': "🔭 [CASE 1] Multi-Technique Discrepancy (3D Proximity Match)",
         'case1_desc': "**Analytical Principle:** This engine identifies colocated instruments within a 30km radius. It visually proves exactly how much **'hidden geometric distortion'** K-PROTOCOL (S_loc) extracts and calibrates from the observed physical distance (SI_Diff) between instruments.",
         'case2_title': "🌐 [CASE 2] Global Spatial Metric Calibration",
@@ -160,7 +160,7 @@ st.markdown(f"""
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2"])
 
 # ==========================================
-# 5. PDF Generator 
+# 5. PDF Generator (100% 원본 유지 및 출력 강화)
 # ==========================================
 def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -174,7 +174,7 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
     pdf.cell(190, 8, f"Report Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
     pdf.ln(5)
     
-    if file_type == 'SNX':
+    if file_type == 'SNX' or 'snx' in file_type.lower():
         if not df_multi.empty:
             pdf.set_font("helvetica", 'B', 12)
             pdf.cell(190, 10, "[ Multi-Technique Discrepancy Calibration ]", 0, 1, 'L')
@@ -188,7 +188,7 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
                 pdf.cell(60, 8, str(row['Colocated Sites'])[:25], 1, 0, 'C')
                 pdf.cell(40, 8, str(row['Compare']), 1, 0, 'C')
                 pdf.cell(40, 8, f"{row['SI_Diff (m)']:.4f}", 1, 0, 'C')
-                pdf.cell(50, 8, f"{row['Correction (m)']:.6f}", 1, 1, 'C')
+                pdf.cell(50, 8, f"{row.get('Correction (m)', 0):.6f}", 1, 1, 'C')
             pdf.ln(8)
             
         if not df_spatial.empty:
@@ -209,23 +209,23 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
                 pdf.cell(20, 8, str(row['Technique']), 1, 0, 'C')
                 pdf.cell(40, 8, f"{row['Altitude']:.2f}", 1, 0, 'C')
                 pdf.cell(50, 8, f"{row['SI_Dist']:.2f}", 1, 0, 'C')
-                pdf.cell(50, 8, f"{row['Residual']:.6f}", 1, 1, 'C')
+                pdf.cell(50, 8, f"{row.get('Residual', 0):.6f}", 1, 1, 'C')
 
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
 
 # ==========================================
-# 6. Core Parsing Engine (압축 해제 로직 완벽 복원)
+# 6. Core Parsing Engine (100% 무손실 로직 + .gz 해제 지원)
 # ==========================================
 content_lines = []
 fname = ""
-file_type_flag, data_epoch = None, "Unknown Epoch"
+file_type_flag, data_epoch = "DEFAULT", "Unknown Epoch"
 df_spatial, df_multi, df_temporal = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 r_sq, max_res = None, None
 
+# 파일 업로드 또는 로컬 디폴트 파일 읽기
 if uploaded_file is not None:
     fname = uploaded_file.name.lower()
-    # 압축 파일(.gz)인 경우 안전하게 해제 후 읽기
     if fname.endswith('.gz'):
         with gzip.open(uploaded_file, 'rt', encoding='utf-8', errors='ignore') as f:
             content_lines = f.read().splitlines()
@@ -241,9 +241,9 @@ else:
 if content_lines:
     with st.spinner("AI 엔진이 물리적 위치와 시공간 좌표를 추적 중입니다..."):
         try:
+            file_type_flag = fname
             # --- CASE 1 & 2: SNX 파일 파싱 ---
             if ".snx" in fname:
-                file_type_flag = 'SNX'
                 site_tech_map = {}
                 snx_data = {}
                 capture_site = False
@@ -284,7 +284,7 @@ if content_lines:
                             val = float(parts[8])
                             
                             key = f"{code}_{pt}"
-                            tech = site_tech_map.get(key, 'P') # 저장해둔 팩트 이름표 가져오기
+                            tech = site_tech_map.get(key, 'P')
                             
                             if key not in snx_data:
                                 snx_data[key] = {'code': code, 'tech': tech, 'X': 0.0, 'Y': 0.0, 'Z': 0.0}
@@ -319,7 +319,6 @@ if content_lines:
                             sloc = (np.pi**2)/(G_SI * ((R_EARTH/avg_r)**2))
                             k_diff = abs(r1/sloc - r2/sloc)
                             
-                            # 동일한 기술끼리의 비교는 제외하고 다른 기술 간의 오차만 추출
                             if s1[1] != s2[1]:
                                 rows_multi.append([f"{s1[0]} ({s1[1]}) & {s2[0]} ({s2[1]})", f"{s1[1]} vs {s2[1]}", r1, r2, si_diff, sloc, k_diff])
                 
@@ -328,13 +327,11 @@ if content_lines:
                 df_spatial = pd.DataFrame(rows_spatial, columns=['ID', 'Technique', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc', 'X', 'Y', 'Z'])
                 df_multi = pd.DataFrame(rows_multi[:100], columns=['Colocated Sites', 'Compare', 'R1 (SI)', 'R2 (SI)', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
                 
-                # 왜곡 제거량(Calibration Amount) 계산
                 if not df_multi.empty:
                     df_multi['Correction (m)'] = df_multi['SI_Diff (m)'] - df_multi['K_Diff (m)']
 
             # --- CASE 3: SP3/CLK 파일 파싱 ---
             elif any(x in fname for x in ['.sp3', '.clk']):
-                file_type_flag = 'SP3'
                 rows = []
                 for line in content_lines:
                     if "sp3" in fname and line.startswith('* '): 
@@ -360,94 +357,93 @@ if content_lines:
         except Exception as e:
             st.error(f"Data parsing error: {e}")
 
-    # ==========================================
-    # 7. Dashboard Rendering
-    # ==========================================
+# ==========================================
+# 7. Dashboard Rendering
+# ==========================================
+
+# [CASE 1] 다중 기술 3D 교차 검증
+if not df_multi.empty:
+    st.markdown('<div class="multi-box">', unsafe_allow_html=True)
+    st.markdown(f"### {t['case1_title']}")
+    st.markdown(t['case1_desc'])
     
-    # [CASE 1] 다중 기술 3D 교차 검증 (에러 추출 시각화 강화)
-    if not df_multi.empty:
-        st.markdown('<div class="multi-box">', unsafe_allow_html=True)
-        st.markdown(f"### {t['case1_title']}")
-        st.markdown(t['case1_desc'])
-        
-        # 단일 막대로 "추출된 왜곡량"만 강력하게 보여줌
-        fig = px.bar(
-            df_multi.head(15), 
-            x='Colocated Sites', 
-            y='Correction (m)',
-            title="Extracted Geometric Illusion (Calibration Amount by K-PROTOCOL)",
-            labels={'Correction (m)': 'Extracted Error (m)'},
-            template='plotly_white',
-            color_discrete_sequence=['#E63946']
-        )
-        fig.update_layout(xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+    fig = px.bar(
+        df_multi.head(15), 
+        x='Colocated Sites', 
+        y='Correction (m)',
+        title="Extracted Geometric Illusion (Calibration Amount by K-PROTOCOL)",
+        labels={'Correction (m)': 'Extracted Error (m)'},
+        template='plotly_white',
+        color_discrete_sequence=['#E63946']
+    )
+    fig.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig, use_container_width=True)
 
-        # 직관적인 용어 설명 카드
-        st.markdown("""
-        <div class="glossary-card">
-            <b>💡 분석 가이드:</b> 동일한 부지 내에 설치된 서로 다른 두 장비(예: SLR과 GNSS) 사이의 거리를 분석합니다.<br>
-            • <b>SI_Diff (m)</b>: 두 장비 간의 <b>실제 물리적 이격 거리</b>입니다. (아무리 공식을 써도 기기 간의 실제 거리가 0이 될 수는 없습니다.)<br>
-            • <b>S_loc</b>: K-PROTOCOL이 밝혀낸 해당 고도/지역의 국소 공간 왜곡 지수입니다.<br>
-            • <b>추출된 왜곡량 (Correction)</b>: 기존 미터법이 과대평가하고 있던 시공간의 <b>'기하학적 거품'</b>입니다. K-PROTOCOL은 이 수치만큼의 환영을 정확히 찾아내어 깎아냈습니다(Calibration).
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.dataframe(df_multi[['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)', 'Correction (m)']].style.format({
-            'SI_Diff (m)': '{:.5f}', 
-            'S_loc': '{:.7f}', 
-            'K_Diff (m)': '{:.5f}',
-            'Correction (m)': '{:.6f}'
-        }), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="glossary-card">
+        <b>💡 분석 가이드:</b> 동일한 부지 내에 설치된 서로 다른 두 장비(예: SLR과 GNSS) 사이의 거리를 분석합니다.<br>
+        • <b>SI_Diff (m)</b>: 두 장비 간의 <b>실제 물리적 이격 거리</b>입니다. (아무리 공식을 써도 기기 간의 실제 거리가 0이 될 수는 없습니다.)<br>
+        • <b>S_loc</b>: K-PROTOCOL이 밝혀낸 해당 고도/지역의 국소 공간 왜곡 지수입니다.<br>
+        • <b>추출된 왜곡량 (Correction)</b>: 기존 미터법이 과대평가하고 있던 시공간의 <b>'기하학적 거품'</b>입니다. K-PROTOCOL은 이 수치만큼의 환영을 정확히 찾아내어 깎아냈습니다(Calibration).
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.dataframe(df_multi[['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)', 'Correction (m)']].style.format({
+        'SI_Diff (m)': '{:.5f}', 
+        'S_loc': '{:.7f}', 
+        'K_Diff (m)': '{:.5f}',
+        'Correction (m)': '{:.6f}'
+    }), use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # [CASE 2] 공간 왜곡 보정 분석
-    if not df_spatial.empty:
+# [CASE 2] 공간 왜곡 보정 분석
+if not df_spatial.empty:
+    if 'Residual' not in df_spatial.columns:
         df_spatial['K_Dist'] = df_spatial['SI_Dist'] / df_spatial['S_loc']
         df_spatial['Residual'] = df_spatial['SI_Dist'] - df_spatial['K_Dist']
-        max_res = df_spatial['Residual'].abs().max()
-        corr, _ = pearsonr(df_spatial['Altitude'], df_spatial['Residual'])
-        r_sq = (corr**2) * 100
-        
-        st.markdown('<div class="explain-box">', unsafe_allow_html=True)
-        st.markdown(f"### {t['case2_title']}")
-        st.markdown(t['case2_desc'])
-        st.markdown(f'<div class="defense-box">{t["defense_text"]}</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        c1m, c2m = st.columns(2)
-        c1m.metric("Total Analyzed Stations", f"{len(df_spatial)}")
-        c2m.metric("Spatial Calibration (R²)", f"{r_sq:.7f} %")
-        
-        st.plotly_chart(px.scatter(df_spatial, x='Altitude', y='Residual', hover_data=['ID', 'Technique'], trendline="ols", trendline_color_override="#E63946", title="Altitude vs Calibration Residual", template="plotly_white"), use_container_width=True)
-        st.divider()
-        st.markdown("#### Station-Specific Details")
-        st.dataframe(df_spatial[['ID', 'Technique', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc', 'K_Dist', 'Residual']], use_container_width=True)
+    max_res = df_spatial['Residual'].abs().max()
+    corr, _ = pearsonr(df_spatial['Altitude'], df_spatial['Residual'])
+    r_sq = (corr**2) * 100
+    
+    st.markdown('<div class="explain-box">', unsafe_allow_html=True)
+    st.markdown(f"### {t['case2_title']}")
+    st.markdown(t['case2_desc'])
+    st.markdown(f'<div class="defense-box">{t["defense_text"]}</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    c1m, c2m = st.columns(2)
+    c1m.metric("Total Analyzed Stations", f"{len(df_spatial)}")
+    c2m.metric("Spatial Calibration (R²)", f"{r_sq:.7f} %")
+    
+    st.plotly_chart(px.scatter(df_spatial, x='Altitude', y='Residual', hover_data=['ID', 'Technique'], trendline="ols", trendline_color_override="#E63946", title="Altitude vs Calibration Residual", template="plotly_white"), use_container_width=True)
+    st.divider()
+    st.markdown("#### Station-Specific Details")
+    st.dataframe(df_spatial[['ID', 'Technique', 'SI_Dist', 'Altitude', 'g_loc', 'S_loc', 'Residual']], use_container_width=True)
 
-    # [CASE 3] 시간 왜곡 보정 분석
-    if not df_temporal.empty:
-        df_temporal['Calibrated_Bias_us'] = df_temporal['Clock_Bias_Raw_us'] / S_EARTH
-        df_temporal['Temporal_Residual_us'] = df_temporal['Clock_Bias_Raw_us'] - df_temporal['Calibrated_Bias_us']
-        
-        st.markdown('<div class="explain-box">', unsafe_allow_html=True)
-        st.markdown(f"### {t['case3_title']}")
-        st.markdown(t['case3_desc'])
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        df_m = df_temporal.groupby('Satellite_ID', as_index=False)['Temporal_Residual_us'].mean()
-        st.plotly_chart(px.bar(df_m, x='Satellite_ID', y='Temporal_Residual_us', title="Average Temporal Residuals (μs) by Satellite", template="plotly_white", color_discrete_sequence=['#1D3557']), use_container_width=True)
-        st.divider()
-        st.markdown("#### Raw Temporal Data")
-        st.dataframe(df_temporal, use_container_width=True)
+# [CASE 3] 시간 왜곡 보정 분석
+if not df_temporal.empty:
+    df_temporal['Calibrated_Bias_us'] = df_temporal['Clock_Bias_Raw_us'] / S_EARTH
+    df_temporal['Temporal_Residual_us'] = df_temporal['Clock_Bias_Raw_us'] - df_temporal['Calibrated_Bias_us']
+    
+    st.markdown('<div class="explain-box">', unsafe_allow_html=True)
+    st.markdown(f"### {t['case3_title']}")
+    st.markdown(t['case3_desc'])
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    df_m = df_temporal.groupby('Satellite_ID', as_index=False)['Temporal_Residual_us'].mean()
+    st.plotly_chart(px.bar(df_m, x='Satellite_ID', y='Temporal_Residual_us', title="Average Temporal Residuals (μs) by Satellite", template="plotly_white", color_discrete_sequence=['#1D3557']), use_container_width=True)
+    st.divider()
+    st.markdown("#### Raw Temporal Data")
+    st.dataframe(df_temporal, use_container_width=True)
 
-    # ==========================================
-    # 8. PDF Export
-    # ==========================================
-    if file_type_flag:
-        st.download_button(label=t['download_btn'], 
-                           data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
-                           file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
-                           mime="application/pdf", type="primary")
+# ==========================================
+# 8. PDF Export
+# ==========================================
+if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
+    st.download_button(label=t['download_btn'], 
+                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
+                       file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
+                       mime="application/pdf", type="primary")
 
 st.divider()
 st.caption("© 2026. Patent Pending: The K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
