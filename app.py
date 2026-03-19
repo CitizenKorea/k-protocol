@@ -160,7 +160,7 @@ st.markdown(f"""
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2"])
 
 # ==========================================
-# 5. PDF Generator (100% 원본 유지 및 출력 강화)
+# 5. PDF Generator (SNX 및 CLK/SP3 시간 데이터 완벽 지원)
 # ==========================================
 def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -174,42 +174,62 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
     pdf.cell(190, 8, f"Report Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1, 'L')
     pdf.ln(5)
     
-    if file_type == 'SNX' or 'snx' in file_type.lower():
-        if not df_multi.empty:
-            pdf.set_font("helvetica", 'B', 12)
-            pdf.cell(190, 10, "[ Multi-Technique Discrepancy Calibration ]", 0, 1, 'L')
-            pdf.set_font("helvetica", 'B', 9)
-            pdf.cell(60, 8, "Colocated Sites", 1, 0, 'C')
-            pdf.cell(40, 8, "Tech Compare", 1, 0, 'C')
-            pdf.cell(40, 8, "SI Difference (m)", 1, 0, 'C')
-            pdf.cell(50, 8, "Extracted Error (m)", 1, 1, 'C')
-            pdf.set_font("helvetica", '', 8)
-            for _, row in df_multi.head(30).iterrows():
-                pdf.cell(60, 8, str(row['Colocated Sites'])[:25], 1, 0, 'C')
-                pdf.cell(40, 8, str(row['Compare']), 1, 0, 'C')
-                pdf.cell(40, 8, f"{row['SI_Diff (m)']:.4f}", 1, 0, 'C')
-                pdf.cell(50, 8, f"{row.get('Correction (m)', 0):.6f}", 1, 1, 'C')
-            pdf.ln(8)
-            
-        if not df_spatial.empty:
-            pdf.set_font("helvetica", 'B', 12)
-            pdf.cell(190, 10, "[ 3D Spatial Metric Calibration Results ]", 0, 1, 'L')
-            pdf.set_font("helvetica", '', 10)
-            if r_sq is not None: pdf.cell(190, 8, f"Calculated Correlation (R-squared): {r_sq:.7f}%", 0, 1, 'L')
-            pdf.ln(5)
-            pdf.set_font("helvetica", 'B', 9)
-            pdf.cell(30, 10, "Station ID", 1, 0, 'C')
-            pdf.cell(20, 10, "Tech", 1, 0, 'C')
-            pdf.cell(40, 10, "Altitude (m)", 1, 0, 'C')
-            pdf.cell(50, 10, "SI Distance (m)", 1, 0, 'C')
-            pdf.cell(50, 10, "K-Residual (m)", 1, 1, 'C')
-            pdf.set_font("helvetica", '', 8)
-            for _, row in df_spatial.head(40).iterrows():
-                pdf.cell(30, 8, str(row['ID'])[:15], 1, 0, 'C')
-                pdf.cell(20, 8, str(row['Technique']), 1, 0, 'C')
-                pdf.cell(40, 8, f"{row['Altitude']:.2f}", 1, 0, 'C')
-                pdf.cell(50, 8, f"{row['SI_Dist']:.2f}", 1, 0, 'C')
-                pdf.cell(50, 8, f"{row.get('Residual', 0):.6f}", 1, 1, 'C')
+    # [1] SNX 공간 데이터 출력
+    if not df_multi.empty:
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(190, 10, "[ Multi-Technique Discrepancy Calibration ]", 0, 1, 'L')
+        pdf.set_font("helvetica", 'B', 9)
+        pdf.cell(60, 8, "Colocated Sites", 1, 0, 'C')
+        pdf.cell(30, 8, "Compare", 1, 0, 'C')
+        pdf.cell(35, 8, "SI_Diff (m)", 1, 0, 'C')
+        pdf.cell(35, 8, "K_Diff (m)", 1, 0, 'C')
+        pdf.cell(30, 8, "Correction", 1, 1, 'C')
+        pdf.set_font("helvetica", '', 8)
+        for _, row in df_multi.head(30).iterrows():
+            pdf.cell(60, 8, str(row['Colocated Sites'])[:25], 1, 0, 'C')
+            pdf.cell(30, 8, str(row['Compare']), 1, 0, 'C')
+            pdf.cell(35, 8, f"{row['SI_Diff (m)']:.4f}", 1, 0, 'C')
+            pdf.cell(35, 8, f"{row.get('K_Diff (m)', 0):.4f}", 1, 0, 'C')
+            pdf.cell(30, 8, f"{row.get('Correction (m)', 0):.6f}", 1, 1, 'C')
+        pdf.ln(8)
+        
+    if not df_spatial.empty:
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(190, 10, "[ 3D Spatial Metric Calibration Results ]", 0, 1, 'L')
+        pdf.set_font("helvetica", '', 10)
+        if r_sq is not None: pdf.cell(190, 8, f"Calculated Correlation (R-squared): {r_sq:.7f}%", 0, 1, 'L')
+        pdf.ln(5)
+        pdf.set_font("helvetica", 'B', 9)
+        pdf.cell(30, 10, "Station ID", 1, 0, 'C')
+        pdf.cell(20, 10, "Tech", 1, 0, 'C')
+        pdf.cell(40, 10, "Altitude (m)", 1, 0, 'C')
+        pdf.cell(50, 10, "SI Distance (m)", 1, 0, 'C')
+        pdf.cell(50, 10, "K-Residual (m)", 1, 1, 'C')
+        pdf.set_font("helvetica", '', 8)
+        for _, row in df_spatial.head(40).iterrows():
+            pdf.cell(30, 8, str(row['ID'])[:15], 1, 0, 'C')
+            pdf.cell(20, 8, str(row['Technique']), 1, 0, 'C')
+            pdf.cell(40, 8, f"{row['Altitude']:.2f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row['SI_Dist']:.2f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row.get('Residual', 0):.6f}", 1, 1, 'C')
+        pdf.ln(8)
+
+    # [2] SP3/CLK 시간 데이터 출력 (버그 수정됨!)
+    if not df_temporal.empty:
+        pdf.set_font("helvetica", 'B', 12)
+        pdf.cell(190, 10, "[ Absolute Temporal Synchronization Results ]", 0, 1, 'L')
+        pdf.ln(5)
+        pdf.set_font("helvetica", 'B', 9)
+        pdf.cell(40, 10, "Satellite ID", 1, 0, 'C')
+        pdf.cell(50, 10, "Clock Bias Raw (us)", 1, 0, 'C')
+        pdf.cell(50, 10, "Calibrated Bias (us)", 1, 0, 'C')
+        pdf.cell(50, 10, "Temporal Residual (us)", 1, 1, 'C')
+        pdf.set_font("helvetica", '', 8)
+        for _, row in df_temporal.head(40).iterrows():
+            pdf.cell(40, 8, str(row['Satellite_ID']), 1, 0, 'C')
+            pdf.cell(50, 8, f"{row.get('Clock_Bias_Raw_us', 0):.6f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row.get('Calibrated_Bias_us', 0):.6f}", 1, 0, 'C')
+            pdf.cell(50, 8, f"{row.get('Temporal_Residual_us', 0):.6f}", 1, 1, 'C')
 
     out = pdf.output(dest='S')
     return out.encode('latin-1') if isinstance(out, str) else bytes(out)
