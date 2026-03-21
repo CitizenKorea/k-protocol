@@ -296,8 +296,8 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
 
     out = pdf.output(dest='S')
     return out.encode('latin-1', 'replace') if isinstance(out, str) else bytes(out)
-    # ==========================================
-# 6. Core Parsing Engine (100% 무손실 로직 + V2 정밀 중력 스위칭)
+# ==========================================
+# 6. Core Parsing Engine (100% 무손실 로직 + V2 정밀 중력 스위칭 + Compare 복구)
 # ==========================================
 content_lines = []
 fname = ""
@@ -395,9 +395,12 @@ if content_lines:
                                 
                             sloc = (np.pi**2)/mid_g_loc
                             k_diff = abs(s1['SI_Dist']/sloc - s2['SI_Dist']/sloc)
-                            rows_multi.append([f"{s1['ID']} & {s2['ID']}", s1['Technique'], s2['Technique'], si_diff, sloc, k_diff])
                             
-                    df_multi = pd.DataFrame(rows_multi, columns=['Colocated Sites', 'Tech1', 'Tech2', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
+                            # ✨ PDF 출력 함수 에러 해결: 'Compare' 문자열 복구
+                            compare_str = f"{s1['Technique']} vs {s2['Technique']}"
+                            rows_multi.append([f"{s1['ID']} & {s2['ID']}", compare_str, si_diff, sloc, k_diff])
+                            
+                    df_multi = pd.DataFrame(rows_multi, columns=['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
                     if not df_multi.empty: df_multi['Correction (m)'] = df_multi['SI_Diff (m)'] - df_multi['K_Diff (m)']
 
             # --- CASE 3: SP3/CLK 시간 분석 (위성 선택 및 비교용) ---
@@ -449,12 +452,17 @@ if not df_multi.empty:
     st.markdown(f"### {t['case1_title']}")
     fig = px.bar(df_multi.head(20), x='Colocated Sites', y='Correction (m)', template='plotly_white', color_discrete_sequence=['#E63946'])
     st.plotly_chart(fig, use_container_width=True)
-    st.dataframe(df_multi.style.format({'SI_Diff (m)': '{:.4f}', 'S_loc': '{:.6f}', 'K_Diff (m)': '{:.4f}', 'Correction (m)': '{:.6f}'}), use_container_width=True)
+    
+    st.dataframe(df_multi[['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)', 'Correction (m)']].style.format({
+        'SI_Diff (m)': '{:.4f}', 
+        'S_loc': '{:.6f}', 
+        'K_Diff (m)': '{:.4f}', 
+        'Correction (m)': '{:.6f}'
+    }), use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # [CASE 2 Rendering]
 if not df_spatial.empty:
-    # V2 척도 S_loc가 이미 파싱 단계에서 반영되었으므로 K_Dist 연산에 그대로 적용됨
     df_spatial['K_Dist'] = df_spatial['SI_Dist'] / df_spatial['S_loc']
     df_spatial['Residual'] = df_spatial['SI_Dist'] - df_spatial['K_Dist']
     corr, _ = pearsonr(df_spatial['Altitude'], df_spatial['Residual'])
@@ -535,9 +543,12 @@ if not df_temporal.empty:
 # ==========================================
 if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
     st.download_button(label=t['download_btn'], 
-                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq), 
+                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
                        file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
                        mime="application/pdf", type="primary")
+
+st.divider()
+st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
 
 st.divider()
 st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
