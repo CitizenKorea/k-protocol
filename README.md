@@ -1,5 +1,11 @@
 # 🚀 K-PROTOCOL: The Grand Unified Theory of Physics (GUT)
 
+<p align="left">
+  <a href="https://orcid.org/0009-0004-3627-6997"><img src="https://img.shields.io/badge/ORCID-0009--0004--3627--6997-A6CE39?logo=orcid&logoColor=white" alt="ORCID"></a>
+  <a href="https://doi.org/10.5281/zenodo.19177554"><img src="https://img.shields.io/badge/DOI-10.5281/zenodo.19177554-blue?logo=zenodo&logoColor=white" alt="DOI"></a>
+  <img src="https://img.shields.io/badge/R--squared-1.0%20Convergence-brightgreen" alt="R-squared">
+</p>
+
 **A complete paradigm shift from the Earth-centric SI Unit System to the Absolute Geometric $\pi$-Matrix.**
 
 <br>
