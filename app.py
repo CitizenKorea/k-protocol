@@ -105,8 +105,8 @@ i18n = {
         'src_box_2': "<b>무손실 추출 방식:</b> 관측소 식별 코드와 순수 3D 관측 좌표(STAX, STAY, STAZ) 및 위성 시계 오차를 100% 원본 그대로 추출하였습니다.",
         'src_box_3': "아래 수치들은 K-PROTOCOL 방정식이 진리임을 증명하는 수학적 팩트입니다. (사용자 파일 미 업로드 시 기본 증거 데이터를 자동 분석합니다.)",
         'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 SNX.gz, SP3.gz, CLK.gz 지원)",
-        'v2_toggle': "🌍 [V2 엔진 가동] WGS84 타원체 정밀 중력 모델 적용 (J2 보정)", # 추가됨
-        'v2_desc': "체크 시 단순 구형(V1) 공식을 넘어, 지구 자전 및 적도 팽창률이 반영된 실제 정밀 타원체 중력장(Somigliana Eq)을 연산합니다.", # 추가됨
+        'v2_toggle': "🌍 [V2 엔진 가동] WGS84 타원체 정밀 중력 모델 적용 (J2 보정)",
+        'v2_desc': "체크 시 단순 구형(V1) 공식을 넘어, 지구 자전 및 적도 팽창률이 반영된 실제 정밀 타원체 중력장(Somigliana Eq)을 연산합니다.",
         'case1_title': "🔭 [CASE 1] 다중 기술 척도 불일치 교차 검증 (SLR vs VLBI vs GNSS)",
         'case1_desc': "**분석 원리:** 본 엔진은 ITRF 원본의 관측소 이름표를 정확히 인식한 뒤, 30km 반경 내에 겹쳐있는 기기들을 강제 매칭시킵니다. 기기 간의 물리적 거리(SI_Diff) 속에 숨어있던 **'기하학적 공간 왜곡(거품)'**을 K-PROTOCOL(S_loc)이 얼마나 정확히 찾아내어 깎아내는지(Calibration) 시각적으로 증명합니다.",
         'case1_guide': """
@@ -145,8 +145,8 @@ i18n = {
         'src_box_2': "<b>Lossless Extraction:</b> Pure 3D coordinates and satellite clock biases were extracted 100% as-is.",
         'src_box_3': "These figures are mathematical facts proving the K-PROTOCOL equation. (Default evidence data is auto-analyzed if no file is uploaded.)",
         'upload_prompt': "Upload your own files to analyze directly. (Supports NASA SNX.gz, SP3.gz, CLK.gz)",
-        'v2_toggle': "🌍 [V2 Engine] Activate WGS84 Ellipsoidal Gravity Model (J2 Perturbation)", # 추가됨
-        'v2_desc': "When checked, bypasses the simple spherical model (V1) and calculates true ellipsoidal gravity accounting for Earth's rotation and equatorial bulge.", # 추가됨
+        'v2_toggle': "🌍 [V2 Engine] Activate WGS84 Ellipsoidal Gravity Model (J2 Perturbation)",
+        'v2_desc': "When checked, bypasses the simple spherical model (V1) and calculates true ellipsoidal gravity accounting for Earth's rotation and equatorial bulge.",
         'case1_title': "🔭 [CASE 1] Multi-Technique Discrepancy (3D Proximity Match)",
         'case1_desc': "**Analytical Principle:** This engine identifies colocated instruments within a 30km radius. It visually proves exactly how much **'hidden geometric distortion'** K-PROTOCOL (S_loc) extracts and calibrates from the observed physical distance (SI_Diff) between instruments.",
         'case1_guide': """
@@ -209,7 +209,7 @@ with c3:
 st.divider()
 st.markdown(f"### {t['src_title']}")
 
-# V2 정밀 엔진 토글 UI 추가!
+# V2 정밀 엔진 토글 UI
 use_v2_gravity = st.checkbox(f"**{t['v2_toggle']}**", value=False)
 if use_v2_gravity:
     st.caption(f"✨ *{t['v2_desc']}*")
@@ -296,8 +296,9 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
 
     out = pdf.output(dest='S')
     return out.encode('latin-1', 'replace') if isinstance(out, str) else bytes(out)
+
 # ==========================================
-# 6. Core Parsing Engine (100% 무손실 로직 + V2 정밀 중력 스위칭 + Compare 복구)
+# 6. Core Parsing Engine (100% 무손실 로직 + V2 정밀 중력 스위칭 + SP3 동적 S_orbit 결합)
 # ==========================================
 content_lines = []
 fname = ""
@@ -403,10 +404,11 @@ if content_lines:
                     df_multi = pd.DataFrame(rows_multi, columns=['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
                     if not df_multi.empty: df_multi['Correction (m)'] = df_multi['SI_Diff (m)'] - df_multi['K_Diff (m)']
 
-            # --- CASE 3: SP3/CLK 시간 분석 (위성 선택 및 비교용) ---
+            # --- CASE 3: SP3/CLK 시간 분석 (동적 S_orbit 기반 이중 보정 엔진 결합) ---
             elif any(x in fname for x in ['.sp3', '.clk']):
                 rows_temporal = []
                 current_epoch_dt = None
+                
                 for line in content_lines:
                     if "sp3" in fname:
                         if line.startswith('* '): 
@@ -416,26 +418,55 @@ if content_lines:
                             except: current_epoch_dt = None
                         elif line.startswith('P') and current_epoch_dt:
                             try:
-                                s, b_km = line[1:4].strip(), float(line[46:60])
-                                if abs(b_km) < 999999.0: rows_temporal.append([current_epoch_dt, s, b_km])
+                                s = line[1:4].strip()
+                                # SP3 원본에서 X, Y, Z 좌표(km)와 시계 오차 추출
+                                x_km = float(line[4:18])
+                                y_km = float(line[18:32])
+                                z_km = float(line[32:46])
+                                b_us = float(line[46:60])
+                                
+                                if abs(b_us) < 999999.0: 
+                                    rows_temporal.append([current_epoch_dt, s, b_us, x_km, y_km, z_km])
                             except: pass
+                            
                     elif "clk" in fname and line.startswith('AS'):
                         try:
                             p = line.split()
                             if len(p) >= 10:
                                 dt = datetime.datetime(int(p[2]), int(p[3]), int(p[4]), int(p[5]), int(p[6]), int(float(p[7])))
                                 b_sec = float(p[9])
-                                if abs(b_sec) < 0.1: rows_temporal.append([dt, p[1], b_sec])
+                                if abs(b_sec) < 0.1: 
+                                    # CLK 파일은 좌표가 없으므로 X, Y, Z를 0으로 처리
+                                    rows_temporal.append([dt, p[1], b_sec, 0.0, 0.0, 0.0])
                         except: pass
                 
                 if rows_temporal:
-                    temp_df = pd.DataFrame(rows_temporal, columns=['Epoch', 'Satellite_ID', 'Bias'])
+                    temp_df = pd.DataFrame(rows_temporal, columns=['Epoch', 'Satellite_ID', 'Bias', 'X_km', 'Y_km', 'Z_km'])
+                    
                     if "sp3" in fname:
+                        # 1. SI 기준 원본 시계 오차(us) 산출
                         temp_df['Clock_Bias_Raw_us'] = (temp_df['Bias'] * 1000.0) * 1e6 / C_SI
+                        
+                        # 2. 위성의 실시간 지심 거리(R) 계산 (미터 단위 변환)
+                        temp_df['R_sat_m'] = np.sqrt(temp_df['X_km']**2 + temp_df['Y_km']**2 + temp_df['Z_km']**2) * 1000.0
+                        
+                        # 3. 실시간 궤도 중력(g_orbit) 및 동적 척도 계수(S_orbit) 벡터화 연산
+                        temp_df['g_orbit'] = g_SI * ((R_EARTH / temp_df['R_sat_m'])**2)
+                        temp_df['S_orbit'] = (np.pi**2) / temp_df['g_orbit']
+                        
+                        # 4. K-PROTOCOL 이중 매핑 보정 (우주 척도와 지구 척도의 불일치 제거)
+                        temp_df['Calibrated_Bias_us'] = temp_df['Clock_Bias_Raw_us'] * (temp_df['S_orbit'] / S_EARTH)
+                        
                     else:
                         temp_df['Clock_Bias_Raw_us'] = temp_df['Bias'] * 1e6
+                        # CLK 파일은 좌표가 없으므로 고정 S_EARTH 보정 적용
+                        temp_df['Calibrated_Bias_us'] = temp_df['Clock_Bias_Raw_us'] / S_EARTH
+                        temp_df['S_orbit'] = S_EARTH
                         
-                    df_temporal = temp_df[['Epoch', 'Satellite_ID', 'Clock_Bias_Raw_us']].copy()
+                    # 잔차 산출 (완벽한 직선을 위한 증명)
+                    temp_df['Temporal_Residual_us'] = temp_df['Clock_Bias_Raw_us'] - temp_df['Calibrated_Bias_us']
+                    df_temporal = temp_df[['Epoch', 'Satellite_ID', 'Clock_Bias_Raw_us', 'Calibrated_Bias_us', 'Temporal_Residual_us', 'S_orbit']].copy()
+                    
                     if "Unknown Epoch" in data_epoch and not df_temporal.empty:
                         data_epoch = df_temporal['Epoch'].iloc[0].strftime('%Y-%m-%d')
 
@@ -477,9 +508,6 @@ if not df_spatial.empty:
 
 # [CASE 3 Rendering - 위성 선택 및 비교 기능 구현]
 if not df_temporal.empty:
-    df_temporal['Calibrated_Bias_us'] = df_temporal['Clock_Bias_Raw_us'] / S_EARTH
-    df_temporal['Temporal_Residual_us'] = df_temporal['Clock_Bias_Raw_us'] - df_temporal['Calibrated_Bias_us']
-    
     st.markdown('<div class="explain-box">', unsafe_allow_html=True)
     st.markdown(f"### {t['case3_title']}")
     st.markdown(t['case3_desc'])
@@ -534,7 +562,8 @@ if not df_temporal.empty:
             
             st.divider()
             st.markdown("#### ✅ Raw Temporal Data (Selected Satellites)")
-            st.dataframe(df_plot_filtered[['Epoch', 'Satellite_ID', 'Clock_Bias_Raw_us', 'Calibrated_Bias_us', 'Temporal_Residual_us']], use_container_width=True)
+            # 출력할 컬럼 지정 시 S_orbit(동적 척도 계수)도 표출되도록 추가했습니다.
+            st.dataframe(df_plot_filtered[['Epoch', 'Satellite_ID', 'Clock_Bias_Raw_us', 'S_orbit', 'Calibrated_Bias_us', 'Temporal_Residual_us']], use_container_width=True)
     else:
         st.warning("분석할 위성을 목록에서 하나 이상 골라주십시오.")
 
