@@ -578,6 +578,3 @@ if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
 
 st.divider()
 st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
-
-st.divider()
-st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
