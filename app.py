@@ -669,6 +669,35 @@ if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty:
         with col_aux4:
             st.markdown("#### 위성별 코드 편향 데이터 (INX/NIX)")
             st.dataframe(df_inx.head(50), use_container_width=True)
+
+# ==========================================
+# 8. PDF Export (원본 유지)
+# ==========================================
+if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
+    st.download_button(label=t['download_btn'], 
+                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
+                       file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
+                       mime="application/pdf", type="primary")
+
+st.divider()
+st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
+
+
+import streamlit as st
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import gzip
+import io
+import os
+import requests
+import math
+from scipy.stats import pearsonr
+from scipy.spatial import KDTree
+from fpdf import FPDF
+import datetime
+
 # ==========================================
 # 1. K-PROTOCOL Universal Constants & Physics Engines
 # ==========================================
@@ -733,6 +762,7 @@ st.markdown("""
     .explain-box { background-color: #FFFFFF; padding: 25px; border-left: 5px solid #495057; border-radius: 5px; margin-bottom: 25px; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
     """, unsafe_allow_html=True)
+
 # ==========================================
 # 3. UI Setup & File Uploader
 # ==========================================
@@ -742,6 +772,7 @@ st.divider()
 
 use_v2_gravity = st.checkbox(f"**🌍 [V2 엔진 가동] WGS84 정밀 중력 모델 적용 (J2 보정)**", value=False)
 uploaded_file = st.file_uploader("분석할 궤도/보정 파일을 업로드하십시오 (snx, sp3, clk, obx, erp, tro, inx, nix 지원)", type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix"])
+
 # ==========================================
 # 4. Core Parsing Engine (Split 기반 다중 포맷 완벽 지원)
 # ==========================================
@@ -960,15 +991,3 @@ if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty 
 
 st.divider()
 st.caption("© 2026. K-PROTOCOL Data Visualization Core - Mathematics completely proved.")
-
-# ==========================================
-# 8. PDF Export (원본 유지)
-# ==========================================
-if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
-    st.download_button(label=t['download_btn'], 
-                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
-                       file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
-                       mime="application/pdf", type="primary")
-
-st.divider()
-st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
