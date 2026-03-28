@@ -669,7 +669,70 @@ if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty:
         with col_aux4:
             st.markdown("#### 위성별 코드 편향 데이터 (INX/NIX)")
             st.dataframe(df_inx.head(50), use_container_width=True)
+# ==========================================
+# 1. K-PROTOCOL Universal Constants & Physics Engines
+# ==========================================
+g_SI = 9.80665  
+S_EARTH = (np.pi**2) / g_SI
+C_SI = 299792458
+C_K = C_SI / S_EARTH
+R_EARTH = 6371000
 
+def ecef_to_wgs84(x, y, z):
+    a = 6378137.0
+    e2 = 0.00669437999014
+    b = math.sqrt(a**2 * (1 - e2))
+    ep2 = (a**2 - b**2) / b**2
+    p = math.sqrt(x**2 + y**2)
+    th = math.atan2(a * z, b * p)
+    lon = math.atan2(y, x)
+    lat = math.atan2((z + ep2 * b * math.sin(th)**3), (p - e2 * a * math.cos(th)**3))
+    N = a / math.sqrt(1 - e2 * math.sin(lat)**2)
+    alt = p / math.cos(lat) - N
+    return math.degrees(lat), math.degrees(lon), alt
+
+def wgs84_gravity(lat_deg, alt):
+    lat = math.radians(lat_deg)
+    ge = 9.7803253359 
+    k = 0.00193185265241
+    e2 = 0.00669437999013
+    g0 = ge * (1 + k * math.sin(lat)**2) / math.sqrt(1 - e2 * math.sin(lat)**2)
+    fac = - (3.087691e-6 - 4.3977e-9 * math.sin(lat)**2) * alt + 0.72125e-12 * alt**2
+    return g0 + fac
+
+# [신규] 쿼터니언(Quaternion) -> 오일러 각도(Yaw, Pitch, Roll) 변환 벡터 연산 엔진
+def quaternion_to_euler_vectorized(q0, q1, q2, q3):
+    # Roll (x-axis)
+    sinr_cosp = 2 * (q0 * q1 + q2 * q3)
+    cosr_cosp = 1 - 2 * (q1**2 + q2**2)
+    roll = np.arctan2(sinr_cosp, cosr_cosp)
+    
+    # Pitch (y-axis)
+    sinp = 2 * (q0 * q2 - q3 * q1)
+    pitch = np.where(np.abs(sinp) >= 1, np.sign(sinp) * np.pi / 2, np.arcsin(sinp))
+    
+    # Yaw (z-axis)
+    siny_cosp = 2 * (q0 * q3 + q1 * q2)
+    cosy_cosp = 1 - 2 * (q2**2 + q3**2)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
+    
+    return np.degrees(yaw), np.degrees(pitch), np.degrees(roll)
+
+# ==========================================
+# 2. Page Configuration & CSS
+# ==========================================
+st.set_page_config(page_title="K-PROTOCOL Omni Analysis Center", layout="wide", page_icon="🛰️")
+
+st.markdown("""
+    <style>
+    .stApp { background-color: #F8F9FA; color: #212529; }
+    .metric-box { background-color: #FFFFFF; padding: 20px; border-left: 4px solid #0056B3; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .metric-title { font-size: 14px; color: #6C757D; font-weight: bold; letter-spacing: 1px; }
+    .metric-value { font-size: 24px; font-weight: 700; color: #212529; }
+    .multi-box { border: 2px solid #2A9D8F; padding: 25px; border-radius: 10px; background-color: #F1FAEE; margin-top: 20px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(42,157,143,0.1); }
+    .explain-box { background-color: #FFFFFF; padding: 25px; border-left: 5px solid #495057; border-radius: 5px; margin-bottom: 25px; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    </style>
+    """, unsafe_allow_html=True)
 # ==========================================
 # 3. UI Setup & File Uploader
 # ==========================================
