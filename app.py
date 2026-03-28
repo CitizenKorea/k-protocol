@@ -671,6 +671,15 @@ if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty:
             st.dataframe(df_inx.head(50), use_container_width=True)
 
 # ==========================================
+# 3. UI Setup & File Uploader
+# ==========================================
+st.markdown(f"# K-PROTOCOL Omni 분석 센터")
+st.markdown(f"#### 데이터로 증명하고, 스스로 판단하십시오. (The Absolute Proof)")
+st.divider()
+
+use_v2_gravity = st.checkbox(f"**🌍 [V2 엔진 가동] WGS84 정밀 중력 모델 적용 (J2 보정)**", value=False)
+uploaded_file = st.file_uploader("분석할 궤도/보정 파일을 업로드하십시오 (snx, sp3, clk, obx, erp, tro, inx, nix 지원)", type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix"])
+# ==========================================
 # 4. Core Parsing Engine (Split 기반 다중 포맷 완벽 지원)
 # ==========================================
 content_lines = []
