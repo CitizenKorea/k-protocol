@@ -84,7 +84,7 @@ def get_github_stats():
 real_stars, real_forks = get_github_stats()
 
 # ==========================================
-# 3. Language Dictionary (V2 텍스트 추가)
+# 3. Language Dictionary
 # ==========================================
 if 'lang' not in st.session_state:
     st.session_state['lang'] = 'ENG'
@@ -104,7 +104,7 @@ i18n = {
         'src_box_1': "<b>원천 데이터 출처:</b> NASA CDDIS 우주 측지 데이터 및 UCSD Garner 아카이브 (정밀 궤도/시계 원본)",
         'src_box_2': "<b>무손실 추출 방식:</b> 관측소 식별 코드와 순수 3D 관측 좌표(STAX, STAY, STAZ) 및 위성 시계 오차를 100% 원본 그대로 추출하였습니다.",
         'src_box_3': "아래 수치들은 K-PROTOCOL 방정식이 진리임을 증명하는 수학적 팩트입니다. (사용자 파일 미 업로드 시 기본 증거 데이터를 자동 분석합니다.)",
-        'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 SNX, SP3, CLK, OBX, ERP, TRO, INX 지원)",
+        'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 snx, sp3, clk, obx, erp, tro, inx, nix 지원)",
         'v2_toggle': "🌍 [V2 엔진 가동] WGS84 타원체 정밀 중력 모델 적용 (J2 보정)",
         'v2_desc': "체크 시 단순 구형(V1) 공식을 넘어, 지구 자전 및 적도 팽창률이 반영된 실제 정밀 타원체 중력장(Somigliana Eq)을 연산합니다.",
         'case1_title': "🔭 [CASE 1] 다중 기술 척도 불일치 교차 검증 (SLR vs VLBI vs GNSS)",
@@ -144,7 +144,7 @@ i18n = {
         'src_box_1': "<b>Raw Data Source:</b> NASA CDDIS Geodetic Data and UCSD Garner Archive (Precision Orbit/Clock Raw Data)",
         'src_box_2': "<b>Lossless Extraction:</b> Pure 3D coordinates and satellite clock biases were extracted 100% as-is.",
         'src_box_3': "These figures are mathematical facts proving the K-PROTOCOL equation. (Default evidence data is auto-analyzed if no file is uploaded.)",
-        'upload_prompt': "Upload your own files to analyze directly. (Supports NASA SNX, SP3, CLK, OBX, ERP, TRO, INX)",
+        'upload_prompt': "Upload your own files to analyze directly. (Supports NASA snx, sp3, clk, obx, erp, tro, inx, nix)",
         'v2_toggle': "🌍 [V2 Engine] Activate WGS84 Ellipsoidal Gravity Model (J2 Perturbation)",
         'v2_desc': "When checked, bypasses the simple spherical model (V1) and calculates true ellipsoidal gravity accounting for Earth's rotation and equatorial bulge.",
         'case1_title': "🔭 [CASE 1] Multi-Technique Discrepancy (3D Proximity Match)",
@@ -220,11 +220,11 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 지원 확장자 4종 추가 (obx, erp, tro, inx)
-uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx"])
+# 지원 확장자에 nix 추가
+uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix"])
 
 # ==========================================
-# 5. PDF Generator (원본 100% 보존 + 추가 파일 대응)
+# 5. PDF Generator (원본 유지)
 # ==========================================
 def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -298,7 +298,7 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
     return out.encode('latin-1', 'replace') if isinstance(out, str) else bytes(out)
 
 # ==========================================
-# 6. Core Parsing Engine (100% 무손실 로직 + V2 정밀 중력 스위칭 + 확장 파일 파서 추가)
+# 6. Core Parsing Engine (원본 100% 보존 + 신규 Split 파서 완벽 적용)
 # ==========================================
 content_lines = []
 fname = ""
@@ -306,7 +306,7 @@ file_type_flag, data_epoch = "DEFAULT", "Unknown Epoch"
 
 # 기본 분석 DF
 df_spatial, df_multi, df_temporal = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-# 신규 보정 파일 DF
+# 신규 보정 파일 DF (nix 포함)
 df_obx, df_erp, df_tro, df_inx = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 r_sq, max_res = None, None
 
@@ -328,7 +328,7 @@ if content_lines:
     with st.spinner("AI 엔진이 시공간 좌표 및 보정 파라미터를 추적 중입니다..."):
         try:
             file_type_flag = fname
-            # --- CASE 1 & 2: SNX (SINEX) 공간 분석 ---
+            # --- CASE 1 & 2: SNX (SINEX) 공간 분석 (원본 그대로 유지) ---
             if ".snx" in fname:
                 site_tech_map, snx_data = {}, {}
                 capture_site, capture_est = False, False
@@ -404,7 +404,7 @@ if content_lines:
                     df_multi = pd.DataFrame(rows_multi, columns=['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
                     if not df_multi.empty: df_multi['Correction (m)'] = df_multi['SI_Diff (m)'] - df_multi['K_Diff (m)']
 
-            # --- CASE 3: SP3/CLK 시간 분석 ---
+            # --- CASE 3: SP3/CLK 시간 분석 (원본 그대로 유지) ---
             elif any(x in fname for x in ['.sp3', '.clk']):
                 rows_temporal = []
                 current_epoch_dt = None
@@ -459,93 +459,94 @@ if content_lines:
                         data_epoch = df_temporal['Epoch'].iloc[0].strftime('%Y-%m-%d')
 
             # ==============================================================
-            # 신규 파싱 엔진 (OBX, ERP, TRO, INX) 
+            # 신규 파싱 엔진 (OBX, ERP, TRO, INX, NIX) - Split 기반 강력한 오류 방지
             # ==============================================================
-            elif any(x in fname for x in ['.obx', '.erp', '.tro', '.inx']):
-                # 1. OBX 파서 (위성 자세 - ORBEX / Attitude)
-                if ".obx" in fname:
-                    obx_data = []
-                    curr_epoch = None
-                    for line in content_lines:
-                        # 통상적인 Epoch 식별자 (* 2023 1 1 0 0 0.0000)
-                        if line.startswith('*'): 
-                            try:
-                                p = line.split()
-                                curr_epoch = f"{p[1]}-{p[2]}-{p[3]} {p[4]}:{p[5]}"
-                            except: pass
-                        # 통상적인 위성 데이터 라인 (예: G01, R02 등)
-                        elif len(line) > 10 and line[0] in ['G', 'R', 'E', 'C', 'J'] and curr_epoch:
-                            try:
-                                parts = line.split()
-                                prn = parts[0]
-                                # 포맷에 따라 다르나 보통 Yaw, Pitch 값이 연속됨
-                                yaw = float(parts[1]) if len(parts) > 1 else 0.0
-                                pitch = float(parts[2]) if len(parts) > 2 else 0.0
-                                obx_data.append([curr_epoch, prn, yaw, pitch])
-                            except: pass
-                    if obx_data:
-                        df_obx = pd.DataFrame(obx_data, columns=['Epoch', 'Satellite_ID', 'Yaw (deg)', 'Pitch (deg)'])
+            
+            # 1. OBX 파서 (위성 자세 - ORBEX / Attitude)
+            elif ".obx" in fname:
+                obx_data = []
+                curr_epoch = "Unknown"
+                for line in content_lines:
+                    if line.startswith('##'):
+                        try:
+                            p = line.split()
+                            # 예: ## 2026 02 15 00 00 00.000000000000  81
+                            curr_epoch = f"{p[1]}-{p[2]}-{p[3]} {p[4]}:{p[5]}"
+                        except: pass
+                    # 예:  ATT G01              4  0.028...  0.357...
+                    elif 'ATT ' in line:
+                        try:
+                            parts = line.split()
+                            idx = parts.index('ATT') + 1
+                            prn = parts[idx]
+                            q0 = float(parts[idx+2])
+                            q1 = float(parts[idx+3])
+                            q2 = float(parts[idx+4])
+                            q3 = float(parts[idx+5])
+                            obx_data.append([curr_epoch, prn, q0, q1, q2, q3])
+                        except: pass
+                if obx_data:
+                    df_obx = pd.DataFrame(obx_data, columns=['Epoch', 'Satellite_ID', 'q0(scalar)', 'q1(x)', 'q2(y)', 'q3(z)'])
 
-                # 2. ERP 파서 (Earth Rotation Parameters)
-                elif ".erp" in fname:
-                    erp_data = []
-                    for line in content_lines:
-                        # 데이터 행은 보통 숫자(MJD)로 시작
-                        if len(line.strip()) > 20 and line.strip()[0].isdigit():
-                            try:
-                                parts = line.split()
-                                mjd = float(parts[0])
-                                xpole = float(parts[1])
-                                ypole = float(parts[2])
-                                ut1_utc = float(parts[3])
-                                lod = float(parts[4])
-                                erp_data.append([mjd, xpole, ypole, ut1_utc, lod])
-                            except: pass
-                    if erp_data:
-                        df_erp = pd.DataFrame(erp_data, columns=['MJD', 'X-Pole', 'Y-Pole', 'UT1-UTC', 'LOD'])
+            # 2. ERP 파서 (Earth Rotation Parameters)
+            elif ".erp" in fname:
+                erp_data = []
+                for line in content_lines:
+                    parts = line.split()
+                    # MJD 행 찾기 (숫자로 시작하고 소수점이 있음)
+                    if len(parts) >= 5 and parts[0].replace('.','',1).isdigit() and '.' in parts[0]:
+                        try:
+                            mjd = float(parts[0])
+                            xpole = float(parts[1])
+                            ypole = float(parts[2])
+                            ut1_utc = float(parts[3])
+                            lod = float(parts[4])
+                            erp_data.append([mjd, xpole, ypole, ut1_utc, lod])
+                        except: pass
+                if erp_data:
+                    df_erp = pd.DataFrame(erp_data, columns=['MJD', 'X-Pole', 'Y-Pole', 'UT1-UTC', 'LOD'])
 
-                # 3. TRO 파서 (Tropospheric Delay SINEX)
-                elif ".tro" in fname:
-                    tro_data = []
-                    capture_trop = False
-                    for line in content_lines:
-                        if line.startswith('+TROP/SOLUTION'): capture_trop = True; continue
-                        if line.startswith('-TROP/SOLUTION'): capture_trop = False; continue
-                        if capture_trop and not line.startswith('*') and len(line) > 10:
-                            try:
-                                parts = line.split()
-                                site = parts[0]
-                                epoch_str = parts[1] # YY:DOY:SECOD
-                                ztd = float(parts[2]) # 보통 미터(m) 단위의 Total Delay
-                                tro_data.append([site, epoch_str, ztd])
-                            except: pass
-                    if tro_data:
-                        df_tro = pd.DataFrame(tro_data, columns=['Site_ID', 'Epoch_DOY', 'ZTD (m)'])
+            # 3. TRO 파서 (관측소 좌표 데이터 추출 - SITE/ID 블록 기준)
+            elif ".tro" in fname:
+                tro_data = []
+                capture_site = False
+                for line in content_lines:
+                    if line.startswith('+SITE/ID'): capture_site = True; continue
+                    if line.startswith('-SITE/ID'): capture_site = False; continue
+                    if capture_site and not line.startswith('*') and len(line) > 20:
+                        try:
+                            parts = line.split()
+                            site = parts[0]
+                            # 뒤에서 3개 요소가 경도, 위도, 고도임
+                            lon = float(parts[-3])
+                            lat = float(parts[-2])
+                            hgt = float(parts[-1])
+                            tro_data.append([site, lon, lat, hgt])
+                        except: pass
+                if tro_data:
+                    df_tro = pd.DataFrame(tro_data, columns=['Site_ID', 'Longitude', 'Latitude', 'Height_ELI'])
 
-                # 4. INX 파서 (IONEX - Ionosphere Map)
-                elif ".inx" in fname:
-                    inx_data = []
-                    curr_map = "Unknown"
-                    for line in content_lines:
-                        if "START OF TEC MAP" in line:
-                            try: curr_map = line.split()[0]
-                            except: curr_map = "Map_X"
-                        # 격자점의 기준 위도 경도 
-                        elif "LAT/LON1/LON2/DLON/H" in line:
-                            try:
-                                parts = line.split()
-                                lat = float(parts[0])
-                                # 이후 줄에 TEC 값들이 나열됨 (단순 식별용 데이터 축적)
-                                inx_data.append([curr_map, lat, "TEC Grids Captured"])
-                            except: pass
-                    if inx_data:
-                        df_inx = pd.DataFrame(inx_data, columns=['Map_ID', 'Latitude', 'Status'])
+            # 4. INX / NIX 파서 (Differential Code Biases)
+            elif any(x in fname for x in ['.inx', '.nix']):
+                inx_data = []
+                for line in content_lines:
+                    # 예: G01     3.470     0.041     PRN / BIAS / RMS
+                    if "PRN / BIAS / RMS" in line and len(line.strip()) > 10:
+                        try:
+                            parts = line.split()
+                            prn = parts[0]
+                            bias = float(parts[1])
+                            rms = float(parts[2])
+                            inx_data.append([prn, bias, rms])
+                        except: pass
+                if inx_data:
+                    df_inx = pd.DataFrame(inx_data, columns=['PRN', 'Bias', 'RMS'])
 
         except Exception as e:
             st.error(f"Data parsing error: {e}")
 
 # ==========================================
-# 7. Dashboard Rendering
+# 7. Dashboard Rendering (기존 모든 차트 유지)
 # ==========================================
 
 # [CASE 1 Rendering]
@@ -638,18 +639,18 @@ if not df_temporal.empty:
         st.warning("분석할 위성을 목록에서 하나 이상 골라주십시오.")
 
 # ==========================================
-# 7-2. Auxiliary Data (OBX, ERP, TRO, INX) Rendering 
+# 7-2. Auxiliary Data (OBX, ERP, TRO, INX, NIX) Rendering 
 # ==========================================
 if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty:
     st.divider()
     st.markdown("### 🛠️ [정밀 보정 파라미터] Auxiliary Precision Data Analysis")
-    st.caption("K-PROTOCOL 공간 왜곡 및 시간 시계열 연산의 정확도를 한계치까지 높이기 위해 추출된 환경 변수 데이터입니다.")
+    st.caption("K-PROTOCOL 공간 왜곡 및 시간 시계열 연산의 정확도를 한계치까지 높이기 위해 유연하게(Split 방식) 추출된 환경 변수 데이터입니다.")
     
     col_aux1, col_aux2 = st.columns(2)
     
     if not df_obx.empty:
         with col_aux1:
-            st.markdown("#### 위성 자세 데이터 (OBX / Attitude)")
+            st.markdown("#### 위성 자세 쿼터니언 데이터 (OBX)")
             st.dataframe(df_obx.head(50), use_container_width=True)
             
     if not df_erp.empty:
@@ -661,16 +662,16 @@ if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty:
     
     if not df_tro.empty:
         with col_aux3:
-            st.markdown("#### 대류권 지연 보정 (TRO - Zenith Delay)")
+            st.markdown("#### 관측소 좌표 추출 데이터 (TRO)")
             st.dataframe(df_tro.head(50), use_container_width=True)
             
     if not df_inx.empty:
         with col_aux4:
-            st.markdown("#### 전리층 격자 데이터 (IONEX)")
+            st.markdown("#### 위성별 코드 편향 데이터 (INX/NIX)")
             st.dataframe(df_inx.head(50), use_container_width=True)
 
 # ==========================================
-# 8. PDF Export
+# 8. PDF Export (원본 유지)
 # ==========================================
 if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
     st.download_button(label=t['download_btn'], 
