@@ -14,7 +14,7 @@ from fpdf import FPDF
 import datetime
 
 # ==========================================
-# 1. K-PROTOCOL Universal Constants & WGS84 Functions (V2 업그레이드)
+# 1. K-PROTOCOL Universal Constants & Physics Engines
 # ==========================================
 g_SI = 9.80665  
 S_EARTH = (np.pi**2) / g_SI
@@ -36,17 +36,33 @@ def ecef_to_wgs84(x, y, z):
     alt = p / math.cos(lat) - N
     return math.degrees(lat), math.degrees(lon), alt
 
-# V2: WGS84 소미글리아나 타원체 정밀 중력 모델 (지구 자전 및 적도 팽창 반영)
+# V2: WGS84 소미글리아나 타원체 정밀 중력 모델
 def wgs84_gravity(lat_deg, alt):
     lat = math.radians(lat_deg)
-    ge = 9.7803253359  # 적도 중력
+    ge = 9.7803253359  
     k = 0.00193185265241
     e2 = 0.00669437999013
-    # 타원체 표면의 이론적 중력 (Somigliana Equation)
     g0 = ge * (1 + k * math.sin(lat)**2) / math.sqrt(1 - e2 * math.sin(lat)**2)
-    # 프리에어 고도 보정 (Free-air correction)
     fac = - (3.087691e-6 - 4.3977e-9 * math.sin(lat)**2) * alt + 0.72125e-12 * alt**2
     return g0 + fac
+
+# [신규 통합] 쿼터니언(Quaternion) -> 오일러 각도(Yaw, Pitch, Roll) 변환 벡터 연산 엔진
+def quaternion_to_euler_vectorized(q0, q1, q2, q3):
+    # Roll (x-axis)
+    sinr_cosp = 2 * (q0 * q1 + q2 * q3)
+    cosr_cosp = 1 - 2 * (q1**2 + q2**2)
+    roll = np.arctan2(sinr_cosp, cosr_cosp)
+    
+    # Pitch (y-axis)
+    sinp = 2 * (q0 * q2 - q3 * q1)
+    pitch = np.where(np.abs(sinp) >= 1, np.sign(sinp) * np.pi / 2, np.arcsin(sinp))
+    
+    # Yaw (z-axis)
+    siny_cosp = 2 * (q0 * q3 + q1 * q2)
+    cosy_cosp = 1 - 2 * (q2**2 + q3**2)
+    yaw = np.arctan2(siny_cosp, cosy_cosp)
+    
+    return np.degrees(yaw), np.degrees(pitch), np.degrees(roll)
 
 # ==========================================
 # 2. Page Configuration & CSS
@@ -104,7 +120,7 @@ i18n = {
         'src_box_1': "<b>원천 데이터 출처:</b> NASA CDDIS 우주 측지 데이터 및 UCSD Garner 아카이브 (정밀 궤도/시계 원본)",
         'src_box_2': "<b>무손실 추출 방식:</b> 관측소 식별 코드와 순수 3D 관측 좌표(STAX, STAY, STAZ) 및 위성 시계 오차를 100% 원본 그대로 추출하였습니다.",
         'src_box_3': "아래 수치들은 K-PROTOCOL 방정식이 진리임을 증명하는 수학적 팩트입니다. (사용자 파일 미 업로드 시 기본 증거 데이터를 자동 분석합니다.)",
-        'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 snx, sp3, clk, obx, erp, tro, inx, nix 지원)",
+        'upload_prompt': "자신만의 데이터를 직접 분석하고 싶다면 업로드하십시오. (NASA 제공 snx, sp3, clk, obx, erp, tro, inx, nix, gim 지원)",
         'v2_toggle': "🌍 [V2 엔진 가동] WGS84 타원체 정밀 중력 모델 적용 (J2 보정)",
         'v2_desc': "체크 시 단순 구형(V1) 공식을 넘어, 지구 자전 및 적도 팽창률이 반영된 실제 정밀 타원체 중력장(Somigliana Eq)을 연산합니다.",
         'case1_title': "🔭 [CASE 1] 다중 기술 척도 불일치 교차 검증 (SLR vs VLBI vs GNSS)",
@@ -144,7 +160,7 @@ i18n = {
         'src_box_1': "<b>Raw Data Source:</b> NASA CDDIS Geodetic Data and UCSD Garner Archive (Precision Orbit/Clock Raw Data)",
         'src_box_2': "<b>Lossless Extraction:</b> Pure 3D coordinates and satellite clock biases were extracted 100% as-is.",
         'src_box_3': "These figures are mathematical facts proving the K-PROTOCOL equation. (Default evidence data is auto-analyzed if no file is uploaded.)",
-        'upload_prompt': "Upload your own files to analyze directly. (Supports NASA snx, sp3, clk, obx, erp, tro, inx, nix)",
+        'upload_prompt': "Upload your own files to analyze directly. (Supports NASA snx, sp3, clk, obx, erp, tro, inx, nix, gim)",
         'v2_toggle': "🌍 [V2 Engine] Activate WGS84 Ellipsoidal Gravity Model (J2 Perturbation)",
         'v2_desc': "When checked, bypasses the simple spherical model (V1) and calculates true ellipsoidal gravity accounting for Earth's rotation and equatorial bulge.",
         'case1_title': "🔭 [CASE 1] Multi-Technique Discrepancy (3D Proximity Match)",
@@ -220,8 +236,8 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# 지원 확장자에 nix 추가
-uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix"])
+# 지원 확장자에 GIM 추가
+uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix", "gim"])
 
 # ==========================================
 # 5. PDF Generator (원본 유지)
@@ -298,7 +314,7 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
     return out.encode('latin-1', 'replace') if isinstance(out, str) else bytes(out)
 
 # ==========================================
-# 6. Core Parsing Engine (원본 100% 보존 + 신규 Split 파서 완벽 적용)
+# 6. Core Parsing Engine (통합 버전)
 # ==========================================
 content_lines = []
 fname = ""
@@ -306,8 +322,8 @@ file_type_flag, data_epoch = "DEFAULT", "Unknown Epoch"
 
 # 기본 분석 DF
 df_spatial, df_multi, df_temporal = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-# 신규 보정 파일 DF (nix 포함)
-df_obx, df_erp, df_tro, df_inx = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+# 신규 보정 파일 DF (nix, gim 포함)
+df_obx, df_erp, df_tro, df_inx, df_tec = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 r_sq, max_res = None, None
 
 if uploaded_file is not None:
@@ -325,10 +341,10 @@ else:
             content_lines = f.read().splitlines()
 
 if content_lines:
-    with st.spinner("AI 엔진이 시공간 좌표 및 보정 파라미터를 추적 중입니다..."):
+    with st.spinner("🚀 AI 엔진이 시공간 좌표 및 보정 파라미터를 추적 중입니다..."):
         try:
             file_type_flag = fname
-            # --- CASE 1 & 2: SNX (SINEX) 공간 분석 (원본 그대로 유지) ---
+            # --- CASE 1 & 2: SNX (SINEX) 공간 분석 (V1 원본 유지) ---
             if ".snx" in fname:
                 site_tech_map, snx_data = {}, {}
                 capture_site, capture_est = False, False
@@ -404,7 +420,7 @@ if content_lines:
                     df_multi = pd.DataFrame(rows_multi, columns=['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)'])
                     if not df_multi.empty: df_multi['Correction (m)'] = df_multi['SI_Diff (m)'] - df_multi['K_Diff (m)']
 
-            # --- CASE 3: SP3/CLK 시간 분석 (원본 그대로 유지) ---
+            # --- CASE 3: SP3/CLK 시간 분석 (V1 원본 유지) ---
             elif any(x in fname for x in ['.sp3', '.clk']):
                 rows_temporal = []
                 current_epoch_dt = None
@@ -459,344 +475,11 @@ if content_lines:
                         data_epoch = df_temporal['Epoch'].iloc[0].strftime('%Y-%m-%d')
 
             # ==============================================================
-            # 신규 파싱 엔진 (OBX, ERP, TRO, INX, NIX) - Split 기반 강력한 오류 방지
+            # 신규 파싱 엔진 (OBX, ERP, TRO, INX, NIX, GIM) - V2 엔진 적용
             # ==============================================================
             
-            # 1. OBX 파서 (위성 자세 - ORBEX / Attitude)
-            elif ".obx" in fname:
-                obx_data = []
-                curr_epoch = "Unknown"
-                for line in content_lines:
-                    if line.startswith('##'):
-                        try:
-                            p = line.split()
-                            # 예: ## 2026 02 15 00 00 00.000000000000  81
-                            curr_epoch = f"{p[1]}-{p[2]}-{p[3]} {p[4]}:{p[5]}"
-                        except: pass
-                    # 예:  ATT G01              4  0.028...  0.357...
-                    elif 'ATT ' in line:
-                        try:
-                            parts = line.split()
-                            idx = parts.index('ATT') + 1
-                            prn = parts[idx]
-                            q0 = float(parts[idx+2])
-                            q1 = float(parts[idx+3])
-                            q2 = float(parts[idx+4])
-                            q3 = float(parts[idx+5])
-                            obx_data.append([curr_epoch, prn, q0, q1, q2, q3])
-                        except: pass
-                if obx_data:
-                    df_obx = pd.DataFrame(obx_data, columns=['Epoch', 'Satellite_ID', 'q0(scalar)', 'q1(x)', 'q2(y)', 'q3(z)'])
-
-            # 2. ERP 파서 (Earth Rotation Parameters)
-            elif ".erp" in fname:
-                erp_data = []
-                for line in content_lines:
-                    parts = line.split()
-                    # MJD 행 찾기 (숫자로 시작하고 소수점이 있음)
-                    if len(parts) >= 5 and parts[0].replace('.','',1).isdigit() and '.' in parts[0]:
-                        try:
-                            mjd = float(parts[0])
-                            xpole = float(parts[1])
-                            ypole = float(parts[2])
-                            ut1_utc = float(parts[3])
-                            lod = float(parts[4])
-                            erp_data.append([mjd, xpole, ypole, ut1_utc, lod])
-                        except: pass
-                if erp_data:
-                    df_erp = pd.DataFrame(erp_data, columns=['MJD', 'X-Pole', 'Y-Pole', 'UT1-UTC', 'LOD'])
-
-            # 3. TRO 파서 (관측소 좌표 데이터 추출 - SITE/ID 블록 기준)
-            elif ".tro" in fname:
-                tro_data = []
-                capture_site = False
-                for line in content_lines:
-                    if line.startswith('+SITE/ID'): capture_site = True; continue
-                    if line.startswith('-SITE/ID'): capture_site = False; continue
-                    if capture_site and not line.startswith('*') and len(line) > 20:
-                        try:
-                            parts = line.split()
-                            site = parts[0]
-                            # 뒤에서 3개 요소가 경도, 위도, 고도임
-                            lon = float(parts[-3])
-                            lat = float(parts[-2])
-                            hgt = float(parts[-1])
-                            tro_data.append([site, lon, lat, hgt])
-                        except: pass
-                if tro_data:
-                    df_tro = pd.DataFrame(tro_data, columns=['Site_ID', 'Longitude', 'Latitude', 'Height_ELI'])
-
-            # 4. INX / NIX 파서 (Differential Code Biases)
-            elif any(x in fname for x in ['.inx', '.nix']):
-                inx_data = []
-                for line in content_lines:
-                    # 예: G01     3.470     0.041     PRN / BIAS / RMS
-                    if "PRN / BIAS / RMS" in line and len(line.strip()) > 10:
-                        try:
-                            parts = line.split()
-                            prn = parts[0]
-                            bias = float(parts[1])
-                            rms = float(parts[2])
-                            inx_data.append([prn, bias, rms])
-                        except: pass
-                if inx_data:
-                    df_inx = pd.DataFrame(inx_data, columns=['PRN', 'Bias', 'RMS'])
-
-        except Exception as e:
-            st.error(f"Data parsing error: {e}")
-
-# ==========================================
-# 7. Dashboard Rendering (기존 모든 차트 유지)
-# ==========================================
-
-# [CASE 1 Rendering]
-if not df_multi.empty:
-    st.markdown('<div class="multi-box">', unsafe_allow_html=True)
-    st.markdown(f"### {t['case1_title']}")
-    fig = px.bar(df_multi.head(20), x='Colocated Sites', y='Correction (m)', template='plotly_white', color_discrete_sequence=['#E63946'])
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.dataframe(df_multi[['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)', 'Correction (m)']].style.format({
-        'SI_Diff (m)': '{:.4f}', 
-        'S_loc': '{:.6f}', 
-        'K_Diff (m)': '{:.4f}', 
-        'Correction (m)': '{:.6f}'
-    }), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# [CASE 2 Rendering]
-if not df_spatial.empty:
-    df_spatial['K_Dist'] = df_spatial['SI_Dist'] / df_spatial['S_loc']
-    df_spatial['Residual'] = df_spatial['SI_Dist'] - df_spatial['K_Dist']
-    corr, _ = pearsonr(df_spatial['Altitude'], df_spatial['Residual'])
-    r_sq = (corr**2) * 100
-    st.markdown('<div class="explain-box">', unsafe_allow_html=True)
-    st.markdown(f"### {t['case2_title']}")
-    col1, col2 = st.columns(2)
-    col1.metric("Analyzed Stations", f"{len(df_spatial)}")
-    col2.metric("Spatial R²", f"{r_sq:.7f} %")
-    st.plotly_chart(px.scatter(df_spatial, x='Altitude', y='Residual', trendline="ols", trendline_color_override="#E63946", template="plotly_white"), use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# [CASE 3 Rendering]
-if not df_temporal.empty:
-    st.markdown('<div class="explain-box">', unsafe_allow_html=True)
-    st.markdown(f"### {t['case3_title']}")
-    st.markdown(t['case3_desc'])
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    available_sats = sorted(df_temporal['Satellite_ID'].dropna().unique())
-    selected_sats = st.multiselect(
-        t.get('select_sat_label', '🛰️ Select Satellite(s):'), 
-        available_sats, 
-        default=available_sats[:3] if len(available_sats) >= 3 else available_sats
-    )
-
-    if selected_sats:
-        df_plot_filtered = df_temporal[df_temporal['Satellite_ID'].isin(selected_sats)].copy()
-        df_plot_filtered = df_plot_filtered.sort_values(by=['Epoch', 'Satellite_ID']).dropna(subset=['Epoch'])
-        
-        if not df_plot_filtered.empty:
-            st.divider()
-            st.markdown(f"#### ✅ {t.get('ts_title', 'Time Series Comparison')}")
-            
-            df_melted = df_plot_filtered.melt(
-                id_vars=['Epoch', 'Satellite_ID'],
-                value_vars=['Clock_Bias_Raw_us', 'Calibrated_Bias_us'],
-                var_name='Metric_Type',
-                value_name='Bias_Value'
-            )
-            
-            df_melted['Metric_Type'] = df_melted['Metric_Type'].map({
-                'Clock_Bias_Raw_us': t.get('metric_raw', 'Raw'),
-                'Calibrated_Bias_us': t.get('metric_k', 'Calibrated')
-            })
-
-            fig_ts_compare = px.line(
-                df_melted, 
-                x='Epoch', 
-                y='Bias_Value', 
-                color='Satellite_ID', 
-                line_dash='Metric_Type', 
-                title=f"Time Series Comparison: {', '.join(selected_sats)}",
-                labels={'Bias_Value': t.get('ts_yaxis', 'Clock Bias (μs)'), 'Epoch': 'Time (UTC)', 'Metric_Type': 'Method'},
-                template="plotly_white"
-            )
-            
-            fig_ts_compare.update_layout(hovermode="x unified")
-            fig_ts_compare.update_traces(mode="lines")
-            st.plotly_chart(fig_ts_compare, use_container_width=True)
-            
-            st.divider()
-            st.markdown(f"#### ✅ {t.get('bar_title', 'Average Temporal Residual Summary')}")
-            df_m = df_plot_filtered.groupby('Satellite_ID', as_index=False)['Temporal_Residual_us'].mean()
-            st.plotly_chart(px.bar(df_m, x='Satellite_ID', y='Temporal_Residual_us', title="Average Temporal Residuals", template="plotly_white", color_discrete_sequence=['#1D3557']), use_container_width=True)
-            
-            st.divider()
-            st.markdown("#### ✅ Raw Temporal Data (Selected Satellites)")
-            st.dataframe(df_plot_filtered[['Epoch', 'Satellite_ID', 'Clock_Bias_Raw_us', 'S_orbit', 'Calibrated_Bias_us', 'Temporal_Residual_us']], use_container_width=True)
-    else:
-        st.warning("분석할 위성을 목록에서 하나 이상 골라주십시오.")
-
-# ==========================================
-# 7-2. Auxiliary Data (OBX, ERP, TRO, INX, NIX) Rendering 
-# ==========================================
-if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty:
-    st.divider()
-    st.markdown("### 🛠️ [정밀 보정 파라미터] Auxiliary Precision Data Analysis")
-    st.caption("K-PROTOCOL 공간 왜곡 및 시간 시계열 연산의 정확도를 한계치까지 높이기 위해 유연하게(Split 방식) 추출된 환경 변수 데이터입니다.")
-    
-    col_aux1, col_aux2 = st.columns(2)
-    
-    if not df_obx.empty:
-        with col_aux1:
-            st.markdown("#### 위성 자세 쿼터니언 데이터 (OBX)")
-            st.dataframe(df_obx.head(50), use_container_width=True)
-            
-    if not df_erp.empty:
-        with col_aux2:
-            st.markdown("#### 지구 자전 파라미터 (ERP)")
-            st.dataframe(df_erp.head(50), use_container_width=True)
-            
-    col_aux3, col_aux4 = st.columns(2)
-    
-    if not df_tro.empty:
-        with col_aux3:
-            st.markdown("#### 관측소 좌표 추출 데이터 (TRO)")
-            st.dataframe(df_tro.head(50), use_container_width=True)
-            
-    if not df_inx.empty:
-        with col_aux4:
-            st.markdown("#### 위성별 코드 편향 데이터 (INX/NIX)")
-            st.dataframe(df_inx.head(50), use_container_width=True)
-
-# ==========================================
-# 8. PDF Export (원본 유지)
-# ==========================================
-if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
-    st.download_button(label=t['download_btn'], 
-                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
-                       file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
-                       mime="application/pdf", type="primary")
-
-st.divider()
-st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
-
-
-import streamlit as st
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import gzip
-import io
-import os
-import requests
-import math
-from scipy.stats import pearsonr
-from scipy.spatial import KDTree
-from fpdf import FPDF
-import datetime
-
-# ==========================================
-# 1. K-PROTOCOL Universal Constants & Physics Engines
-# ==========================================
-g_SI = 9.80665  
-S_EARTH = (np.pi**2) / g_SI
-C_SI = 299792458
-C_K = C_SI / S_EARTH
-R_EARTH = 6371000
-
-def ecef_to_wgs84(x, y, z):
-    a = 6378137.0
-    e2 = 0.00669437999014
-    b = math.sqrt(a**2 * (1 - e2))
-    ep2 = (a**2 - b**2) / b**2
-    p = math.sqrt(x**2 + y**2)
-    th = math.atan2(a * z, b * p)
-    lon = math.atan2(y, x)
-    lat = math.atan2((z + ep2 * b * math.sin(th)**3), (p - e2 * a * math.cos(th)**3))
-    N = a / math.sqrt(1 - e2 * math.sin(lat)**2)
-    alt = p / math.cos(lat) - N
-    return math.degrees(lat), math.degrees(lon), alt
-
-def wgs84_gravity(lat_deg, alt):
-    lat = math.radians(lat_deg)
-    ge = 9.7803253359 
-    k = 0.00193185265241
-    e2 = 0.00669437999013
-    g0 = ge * (1 + k * math.sin(lat)**2) / math.sqrt(1 - e2 * math.sin(lat)**2)
-    fac = - (3.087691e-6 - 4.3977e-9 * math.sin(lat)**2) * alt + 0.72125e-12 * alt**2
-    return g0 + fac
-
-# [신규] 쿼터니언(Quaternion) -> 오일러 각도(Yaw, Pitch, Roll) 변환 벡터 연산 엔진
-def quaternion_to_euler_vectorized(q0, q1, q2, q3):
-    # Roll (x-axis)
-    sinr_cosp = 2 * (q0 * q1 + q2 * q3)
-    cosr_cosp = 1 - 2 * (q1**2 + q2**2)
-    roll = np.arctan2(sinr_cosp, cosr_cosp)
-    
-    # Pitch (y-axis)
-    sinp = 2 * (q0 * q2 - q3 * q1)
-    pitch = np.where(np.abs(sinp) >= 1, np.sign(sinp) * np.pi / 2, np.arcsin(sinp))
-    
-    # Yaw (z-axis)
-    siny_cosp = 2 * (q0 * q3 + q1 * q2)
-    cosy_cosp = 1 - 2 * (q2**2 + q3**2)
-    yaw = np.arctan2(siny_cosp, cosy_cosp)
-    
-    return np.degrees(yaw), np.degrees(pitch), np.degrees(roll)
-
-# ==========================================
-# 2. Page Configuration & CSS
-# ==========================================
-st.set_page_config(page_title="K-PROTOCOL Omni Analysis Center", layout="wide", page_icon="🛰️")
-
-st.markdown("""
-    <style>
-    .stApp { background-color: #F8F9FA; color: #212529; }
-    .metric-box { background-color: #FFFFFF; padding: 20px; border-left: 4px solid #0056B3; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .metric-title { font-size: 14px; color: #6C757D; font-weight: bold; letter-spacing: 1px; }
-    .metric-value { font-size: 24px; font-weight: 700; color: #212529; }
-    .multi-box { border: 2px solid #2A9D8F; padding: 25px; border-radius: 10px; background-color: #F1FAEE; margin-top: 20px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(42,157,143,0.1); }
-    .explain-box { background-color: #FFFFFF; padding: 25px; border-left: 5px solid #495057; border-radius: 5px; margin-bottom: 25px; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ==========================================
-# 3. UI Setup & File Uploader
-# ==========================================
-st.markdown(f"# K-PROTOCOL Omni 분석 센터")
-st.markdown(f"#### 데이터로 증명하고, 스스로 판단하십시오. (The Absolute Proof)")
-st.divider()
-
-use_v2_gravity = st.checkbox(f"**🌍 [V2 엔진 가동] WGS84 정밀 중력 모델 적용 (J2 보정)**", value=False)
-uploaded_file = st.file_uploader("분석할 궤도/보정 파일을 업로드하십시오 (snx, sp3, clk, obx, erp, tro, inx, nix 지원)", type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix"])
-
-# ==========================================
-# 4. Core Parsing Engine (Split 기반 다중 포맷 완벽 지원)
-# ==========================================
-content_lines = []
-fname = ""
-df_spatial, df_multi, df_temporal = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-df_obx, df_erp, df_tro, df_inx, df_tec = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-
-if uploaded_file is not None:
-    fname = uploaded_file.name.lower()
-    if fname.endswith('.gz'):
-        with gzip.open(uploaded_file, 'rt', encoding='utf-8', errors='ignore') as f:
-            content_lines = f.read().splitlines()
-    else:
-        content_lines = uploaded_file.read().decode('utf-8', errors='ignore').splitlines()
-
-if content_lines:
-    with st.spinner("🚀 고성능 AI 엔진이 시공간 좌표 및 보정 파라미터를 역추적 중입니다..."):
-        try:
-            # (기존 SNX, SP3, CLK 파서는 공간 확보를 위해 본 데모에서는 보조 파라미터 중심으로 구성했습니다.
-            # 실제 사용 시 이전 답변의 파서들과 병합하여 사용하시면 됩니다.)
-            
             # --- A. OBX 파서 (위성 자세 - ORBEX / Attitude) ---
-            if ".obx" in fname:
+            elif ".obx" in fname:
                 obx_data = []
                 curr_epoch = "Unknown"
                 for line in content_lines:
@@ -896,19 +579,114 @@ if content_lines:
                 if tec_data: df_tec = pd.DataFrame(tec_data, columns=['Epoch', 'Latitude', 'TEC'])
 
         except Exception as e:
-            st.error(f"데이터 파싱 오류: {e}")
+            st.error(f"Data parsing error: {e}")
 
 # ==========================================
-# 5. Advanced Visualization Dashboard (A, B, C, D)
+# 7. Dashboard Rendering (기존 모든 차트 유지)
+# ==========================================
+
+# [CASE 1 Rendering]
+if not df_multi.empty:
+    st.markdown('<div class="multi-box">', unsafe_allow_html=True)
+    st.markdown(f"### {t['case1_title']}")
+    fig = px.bar(df_multi.head(20), x='Colocated Sites', y='Correction (m)', template='plotly_white', color_discrete_sequence=['#E63946'])
+    st.plotly_chart(fig, use_container_width=True)
+    
+    st.dataframe(df_multi[['Colocated Sites', 'Compare', 'SI_Diff (m)', 'S_loc', 'K_Diff (m)', 'Correction (m)']].style.format({
+        'SI_Diff (m)': '{:.4f}', 
+        'S_loc': '{:.6f}', 
+        'K_Diff (m)': '{:.4f}', 
+        'Correction (m)': '{:.6f}'
+    }), use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# [CASE 2 Rendering]
+if not df_spatial.empty:
+    df_spatial['K_Dist'] = df_spatial['SI_Dist'] / df_spatial['S_loc']
+    df_spatial['Residual'] = df_spatial['SI_Dist'] - df_spatial['K_Dist']
+    corr, _ = pearsonr(df_spatial['Altitude'], df_spatial['Residual'])
+    r_sq = (corr**2) * 100
+    st.markdown('<div class="explain-box">', unsafe_allow_html=True)
+    st.markdown(f"### {t['case2_title']}")
+    col1, col2 = st.columns(2)
+    col1.metric("Analyzed Stations", f"{len(df_spatial)}")
+    col2.metric("Spatial R²", f"{r_sq:.7f} %")
+    st.plotly_chart(px.scatter(df_spatial, x='Altitude', y='Residual', trendline="ols", trendline_color_override="#E63946", template="plotly_white"), use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# [CASE 3 Rendering]
+if not df_temporal.empty:
+    st.markdown('<div class="explain-box">', unsafe_allow_html=True)
+    st.markdown(f"### {t['case3_title']}")
+    st.markdown(t['case3_desc'])
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    available_sats = sorted(df_temporal['Satellite_ID'].dropna().unique())
+    selected_sats = st.multiselect(
+        t.get('select_sat_label', '🛰️ Select Satellite(s):'), 
+        available_sats, 
+        default=available_sats[:3] if len(available_sats) >= 3 else available_sats
+    )
+
+    if selected_sats:
+        df_plot_filtered = df_temporal[df_temporal['Satellite_ID'].isin(selected_sats)].copy()
+        df_plot_filtered = df_plot_filtered.sort_values(by=['Epoch', 'Satellite_ID']).dropna(subset=['Epoch'])
+        
+        if not df_plot_filtered.empty:
+            st.divider()
+            st.markdown(f"#### ✅ {t.get('ts_title', 'Time Series Comparison')}")
+            
+            df_melted = df_plot_filtered.melt(
+                id_vars=['Epoch', 'Satellite_ID'],
+                value_vars=['Clock_Bias_Raw_us', 'Calibrated_Bias_us'],
+                var_name='Metric_Type',
+                value_name='Bias_Value'
+            )
+            
+            df_melted['Metric_Type'] = df_melted['Metric_Type'].map({
+                'Clock_Bias_Raw_us': t.get('metric_raw', 'Raw'),
+                'Calibrated_Bias_us': t.get('metric_k', 'Calibrated')
+            })
+
+            fig_ts_compare = px.line(
+                df_melted, 
+                x='Epoch', 
+                y='Bias_Value', 
+                color='Satellite_ID', 
+                line_dash='Metric_Type', 
+                title=f"Time Series Comparison: {', '.join(selected_sats)}",
+                labels={'Bias_Value': t.get('ts_yaxis', 'Clock Bias (μs)'), 'Epoch': 'Time (UTC)', 'Metric_Type': 'Method'},
+                template="plotly_white"
+            )
+            
+            fig_ts_compare.update_layout(hovermode="x unified")
+            fig_ts_compare.update_traces(mode="lines")
+            st.plotly_chart(fig_ts_compare, use_container_width=True)
+            
+            st.divider()
+            st.markdown(f"#### ✅ {t.get('bar_title', 'Average Temporal Residual Summary')}")
+            df_m = df_plot_filtered.groupby('Satellite_ID', as_index=False)['Temporal_Residual_us'].mean()
+            st.plotly_chart(px.bar(df_m, x='Satellite_ID', y='Temporal_Residual_us', title="Average Temporal Residuals", template="plotly_white", color_discrete_sequence=['#1D3557']), use_container_width=True)
+            
+            st.divider()
+            st.markdown("#### ✅ Raw Temporal Data (Selected Satellites)")
+            st.dataframe(df_plot_filtered[['Epoch', 'Satellite_ID', 'Clock_Bias_Raw_us', 'S_orbit', 'Calibrated_Bias_us', 'Temporal_Residual_us']], use_container_width=True)
+    else:
+        st.warning("분석할 위성을 목록에서 하나 이상 골라주십시오.")
+
+# ==========================================
+# 7-2. Advanced Visualization Dashboard (A, B, C, D) - V2 적용
 # ==========================================
 if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty or not df_tec.empty:
+    st.divider()
     st.markdown("### 🛠️ K-PROTOCOL 정밀 환경 변수 딥다이브 (Advanced Analysis)")
+    st.caption("K-PROTOCOL 공간 왜곡 및 시간 시계열 연산의 정확도를 한계치까지 높이기 위해 유연하게 추출된 환경 변수 데이터입니다.")
     
     # [A] 위성 자세 데이터 (OBX)
     if not df_obx.empty:
         st.markdown('<div class="explain-box">', unsafe_allow_html=True)
         st.markdown("#### A. 위성 자세 데이터 (ATT.OBX) - 쿼터니언과 오일러 회전")
-        st.markdown("✔️ **Norm 무결성 검증:** $q_0^2 + q_1^2 + q_2^2 + q_3^2 = 1$ 증명 (1.0 수렴 확인)")
+        st.markdown("✔️ **Norm 무결성 검증:** q0^2 + q1^2 + q2^2 + q3^2 = 1 증명 (1.0 수렴 확인)")
         
         # 무결성 표 출력
         st.dataframe(df_obx[['Epoch', 'Satellite_ID', 'q0(scalar)', 'q1(x)', 'q2(y)', 'q3(z)', 'Norm']].head(10), use_container_width=True)
@@ -989,5 +767,14 @@ if not df_obx.empty or not df_erp.empty or not df_tro.empty or not df_inx.empty 
             st.plotly_chart(fig_dcb, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+# ==========================================
+# 8. PDF Export (원본 유지)
+# ==========================================
+if file_type_flag and (not df_spatial.empty or not df_temporal.empty):
+    st.download_button(label=t['download_btn'], 
+                       data=create_integrity_report(df_spatial, df_multi, df_temporal, file_type_flag, fname, data_epoch, r_sq, max_res), 
+                       file_name=f"K_PROTOCOL_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf", 
+                       mime="application/pdf", type="primary")
+
 st.divider()
-st.caption("© 2026. K-PROTOCOL Data Visualization Core - Mathematics completely proved.")
+st.caption("© 2026. Patent Pending: K-PROTOCOL algorithm and related mathematical verifications are strictly patent pending.")
