@@ -240,7 +240,7 @@ st.markdown(f"""
 uploaded_file = st.file_uploader(t['upload_prompt'], type=["snx", "sp3", "clk", "gz", "fr2", "obx", "erp", "tro", "inx", "nix", "gim"])
 
 # ==========================================
-# 5. PDF Generator (원본 유지)
+# 5. PDF Generator (링크 추가 버전)
 # ==========================================
 def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_name, data_epoch, r_sq=None, max_res=None):
     pdf = FPDF()
@@ -309,6 +309,17 @@ def create_integrity_report(df_spatial, df_multi, df_temporal, file_type, file_n
             pdf.cell(50, 8, f"{row.get('Clock_Bias_Raw_us', 0):.6f}", 1, 0, 'C')
             pdf.cell(50, 8, f"{row.get('Calibrated_Bias_us', 0):.6f}", 1, 0, 'C')
             pdf.cell(50, 8, f"{row.get('Temporal_Residual_us', 0):.6f}", 1, 1, 'C')
+
+    # --- [추가된 링크 섹션] ---
+    pdf.ln(10)
+    pdf.set_font("helvetica", 'B', 11)
+    pdf.cell(190, 10, "[ Official Links & References ]", 0, 1, 'L')
+    pdf.set_font("helvetica", '', 10)
+    
+    # 클릭 가능한 하이퍼링크 형식으로 추가
+    pdf.cell(190, 6, "GitHub: https://github.com/CitizenKorea/k-protocol", 0, 1, 'L', link="https://github.com/CitizenKorea/k-protocol")
+    pdf.cell(190, 6, "Streamlit: https://k-protocol.streamlit.app", 0, 1, 'L', link="https://k-protocol.streamlit.app")
+    pdf.cell(190, 6, "Zenodo: https://doi.org/10.5281/zenodo.19308715", 0, 1, 'L', link="https://doi.org/10.5281/zenodo.19308715")
 
     out = pdf.output(dest='S')
     return out.encode('latin-1', 'replace') if isinstance(out, str) else bytes(out)
