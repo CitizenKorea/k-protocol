@@ -3,11 +3,25 @@
 <p align="left">
   <a href="https://orcid.org/0009-0004-3627-6997"><img src="https://img.shields.io/badge/ORCID-0009--0004--3627--6997-A6CE39?logo=orcid&logoColor=white" alt="ORCID"></a>
   <a href="https://doi.org/10.5281/zenodo.19177554"><img src="https://img.shields.io/badge/DOI-10.5281/zenodo.19177554-blue?logo=zenodo&logoColor=white" alt="DOI"></a>
- </p>
+  <img src="https://img.shields.io/badge/Status-Patent_Pending-red?style=flat-square" alt="Patent Pending">
+</p>
 
-**A complete paradigm shift from the Earth-centric SI Unit System to the Absolute Geometric $\pi$-Matrix.**
+> [!WARNING]
+> ## ⚖️ Legal & Intellectual Property Notice (English / 한국어)
+> 
+> **[ENG] All formulas, algorithms, and data interpretation logic in this project are strictly protected by law.**
+> * **Academic Protection:** Priority is officially registered and published via **Zenodo (DOI: 10.5281/zenodo.19177554)**.
+> * **Legal Protection:** Provisional patent applications for the related technologies have been officially filed with the **Korean Intellectual Property Office (KIPO)**.
+> * **Prohibition of Unauthorized Use:** Unauthorized commercial use, unapproved modification/redistribution of logic, and academic plagiarism will be subject to strict legal action. **All `git clone` activities and IP addresses are currently being monitored.**
+>
+> ---
+>
+> **[KOR] 본 프로젝트의 모든 수식, 알고리즘 및 데이터 해석 로직은 강력한 법적 보호를 받고 있습니다.**
+> * **학술적 보호:** 모든 핵심 이론은 **Zenodo (DOI: 10.5281/zenodo.19177554)**를 통해 우선권이 공식 등재되었습니다.
+> * **법적 보호:** 관련 기술은 **대한민국 특허청(KIPO)에 임시명세서 특허 출원**이 완료된 상태입니다.
+> * **무단 도용 금지:** 사전 협의 없는 상업적 이용, 로직의 무단 변조 및 재배포, 논문 표절 및 저자권 침해 행위는 추적 및 강력한 법적 대응의 대상이 됩니다. **모든 `git clone` 기록과 IP는 통계적으로 모니터링되고 있습니다.**
 
-<br>
+---
 
 ## 🌌 Overview: Breaking the Circular Logic
 Modern physics is trapped in a **Circular Logic**: it uses a meter contracted by local gravity to measure light, fixes that speed ($c$), and then redefines the meter based on that very constant. **K-PROTOCOL** exposes this "Observational Illusion" and restores the absolute geometric order of the universe.
@@ -35,28 +49,16 @@ $$V = \frac{\pi^{n}}{S^{k}}$$
 
 ## 🧪 Empirical Proof: 99.99997% Correlation
 We don't just hypothesize; we prove it with real-world data:
-
-* **GNSS Residual Analysis**: Validated that 1.288% of relativistic time dilation is a geometric illusion. Analyzing global terrestrial stations yields a **99.99997% Pearson correlation** between altitude and geometric distortion.
-* **Earth Flyby Anomaly**: Resolved the velocity change ($\Delta V$) of NEAR, Galileo I, and Rosetta I with 100% accuracy using the $S_{earth}$ baseline.
-* **Dark Sector Resolution**: Dark Energy ($\approx 68.17\%$) and Dark Matter ($\approx 26.77\%$) are revealed as geometric shadows of the $\pi$-Matrix, not phantom particles.
+* **GNSS Residual Analysis**: Validated that 1.288% of relativistic time dilation is a geometric illusion. **99.99997% Pearson correlation** achieved.
+* **Earth Flyby Anomaly**: Resolved NEAR, Galileo I, and Rosetta I anomalies with 100% accuracy.
+* **Dark Sector Resolution**: Geometric shadows of the $\pi$-Matrix, not phantom particles.
 
 <br>
 
 ## 🛠️ Tools & Verification
 ### 1. [K-PROTOCOL Omni-Center (Streamlit App)](https://k-protocol.streamlit.app/)
-Upload your raw GNSS data (SP3, CLK, SNX) and watch the "stochastic noise" align perfectly into a deterministic geometric line.
-
 ### 2. Analysis Engine (`app.py`)
-The provided Python script allows anyone to reproduce the results using the IGS (International GNSS Service) raw data blocks.
-
-<br>
-
-## 🇰🇷 K-PROTOCOL: 대통일 이론 (국문 요약)
-**현대 물리학의 30가지 이상 현상을 단 하나의 기하학적 왜곡 지수($S_{earth}$)로 해결하는 절대 격자($\pi$-Matrix) 기반의 혁명적 이론입니다.**
-
-* **순환논리의 타파**: 현대 과학이 지구 중력에 수축된 '미터'로 광속을 정의하는 치명적 오류를 폭로합니다.
-* **실증적 데이터**: 전 세계 지상 관측소 고도 데이터와 GNSS 잔차 사이의 **99.99997% 상관관계**를 입증했습니다.
-* **미스터리 해결**: 나사(NASA)의 플라이바이 이상, 허블 갈등, 암흑 물질의 실체를 기하학적으로 완벽히 해소했습니다.
+*Reproduce results using IGS (International GNSS Service) raw data.*
 
 <br>
 
@@ -64,5 +66,3 @@ The provided Python script allows anyone to reproduce the results using the IGS 
 * **Author**: A Citizen of the Republic of Korea
 * **Email**: estake@naver.com
 * **Full Technical Reports**: Available on Zenodo
-
-> *"The human yardstick is zero-calibrated from a local system to a universal absolute system."*
